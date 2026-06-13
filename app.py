@@ -1,322 +1,284 @@
-import requests
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
-BASE = "https://prices.runescape.wiki/api/v1/osrs"
-HEADERS = {"User-Agent": "OsrsFlipDashboard/Owen"}
-TAX_RATE = 0.02
-TAX_CAP = 5_000_000
+from formatters import fmt_ago, fmt_gp, fmt_int, fmt_pct, get_timing, now_ts, secs_ago
+from ge_api import WATCHLIST_CATALYSTS, compute_flips, fetch_latest, fetch_mapping, fetch_timeseries, fetch_volumes
+from theme import THEME, inject_theme
+from ui_helpers import add_score, compute_score, ratio_state, status_badge, style_dataframe, to_df, trend_state
 
-WATCHLIST = [
-    ("Twisted bow", "CoX BIS â€” permanently scarce; ranged PvM always relevant"),
-    ("Scythe of vitur", "ToB BIS â€” BiS melee for slayer/raids; supply drains via charges"),
-    ("Tumeken's shadow", "ToA BIS mage â€” meta-defining; no confirmed replacement"),
-    ("Soulreaper axe", "Blood Moon drop; Raids 4 hype driving melee interest"),
-    ("Osmumten's fang", "ToA â€” stab BIS; supply pressure from active ToA meta"),
-    ("Harmonised orb", "CoX â€” mage BIS for NM/PvM; CoX changes can shift supply/demand"),
-    ("Volatile orb", "CoX â€” high-value unique; affected by CoX prayer scroll reweight"),
-    ("Eldritch orb", "CoX â€” affected by CoX prayer scroll reweight; supply dynamics shifting"),
-    ("Dexterous prayer scroll", "CoX â€” prayer scroll reweight could shift value"),
-    ("Arcane prayer scroll", "CoX â€” prayer scroll rate controversy; watch for rebalance"),
-    ("Enhanced crystal weapon seed", "Corrupted Gauntlet â€” supply changes affect Bowfa ecosystem"),
-    ("Ghrazi rapier", "ToB â€” buff/update-sensitive melee unique"),
-    ("Sanguinesti staff (uncharged)", "ToB â€” buff/update-sensitive mage unique"),
-    ("Avernic defender hilt", "ToB â€” tied to ToB/raids participation"),
-    ("Necklace of anguish", "Ranged neck slot pressure from new gear / replacement risk"),
-    ("Masori body (f)", "ToA range BIS â€” future range gear may displace it"),
-    ("Masori chaps (f)", "ToA range BIS â€” same displacement risk as body"),
-    ("Torva platebody", "Nex melee BIS â€” raid melee hype proxy"),
-    ("Torva platelegs", "Nex melee BIS â€” raid melee hype proxy"),
-    ("Bandos chestplate", "Mid-tier melee returning-player demand proxy"),
-    ("Bandos tassets", "Mid-tier melee returning-player demand proxy"),
-    ("Armadyl chestplate", "Mid-tier range baseline demand proxy"),
-    ("Armadyl chainskirt", "Mid-tier range baseline demand proxy"),
-    ("3rd age platebody", "Store-of-value / status flex; fixed supply"),
-]
+st.set_page_config(page_title="OSRS GE Dashboard", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
-WATCHLIST_NAMES = [w[0] for w in WATCHLIST]
-WATCHLIST_CATALYSTS = {w[0]: w[1] for w in WATCHLIST}
+PRICE_INTERVAL = 60
+VOLUME_INTERVAL = 300
+MAPPING_KEY = "mapping_loaded"
 
-DISCOVERY_UNIVERSE = {
-    "Zaryte crossbow": "High-end ranged utility; reacts to range meta shifts",
-    "Dragon hunter lance": "Boss-specific melee demand proxy",
-    "Dragon hunter crossbow": "Boss-specific ranged demand proxy",
-    "Ancestral robe top": "Mage gear demand proxy",
-    "Ancestral robe bottom": "Mage gear demand proxy",
-    "Virtus robe top": "Mage hybrid demand proxy",
-    "Virtus robe bottom": "Mage hybrid demand proxy",
-    "Torva full helm": "Top-end melee demand proxy",
-    "Justiciar faceguard": "Tank/melee demand proxy",
-    "Elysian spirit shield": "Defensive prestige item / slow-moving high-value unique",
-    "Zaryte vambraces": "Endgame ranged accessory proxy",
-    "Inquisitor's mace": "Crush meta / boss demand proxy",
-    "Inquisitor's hauberk": "Crush gear set demand proxy",
-    "Inquisitor's plateskirt": "Crush gear set demand proxy",
+TAB_COPY = {
+    "Bulk": "Bulk focuses on higher-limit flips where repeatability and fill rate matter more than any one item. Use this tab to find scalable trades with strong realistic profit potential.",
+    "Singular": "Singular highlights lower-limit, higher-value items where each successful flip carries more GP per item. Use it when you want fewer positions with bigger individual outcomes.",
+    "High ROI": "High ROI surfaces trades with strong percentage return relative to buy price. This view is useful for finding efficient capital deployment, especially on smaller stacks.",
+    "Watchlist": "Watchlist tracks your core high-interest items and adds catalyst context so you can judge why movement may matter. It is the best tab for monitoring names you already care about day to day.",
+    "Signals": "Signals is your discovery tab for non-core items that still fired enough movement, spread, or event conditions to deserve attention. It helps you catch opportunities outside the main watchlist before they become obvious.",
 }
 
 
-def _get(path, timeout=14):
-    r = requests.get(f"{BASE}{path}", headers=HEADERS, timeout=timeout)
-    r.raise_for_status()
-    return r.json()
+def load_mapping():
+    if MAPPING_KEY not in st.session_state:
+        st.session_state["mapping"] = fetch_mapping()
+        st.session_state[MAPPING_KEY] = True
 
 
-def fetch_latest():
-    return (_get("/latest") or {}).get("data") or {}
+def do_prices():
+    st.session_state["latest"] = fetch_latest()
+    st.session_state["price_ts"] = now_ts()
 
 
-def fetch_mapping():
-    return _get("/mapping") or []
+def do_volumes():
+    hour_vols, fmin_vols = fetch_volumes()
+    st.session_state["hour_vols"] = hour_vols
+    st.session_state["fmin_vols"] = fmin_vols
+    st.session_state["volume_ts"] = now_ts()
 
 
-def fetch_volumes():
-    hour = (_get("/1h") or {}).get("data") or {}
-    fmin = (_get("/5m") or {}).get("data") or {}
-    return hour, fmin
+def stale(key, interval):
+    last = st.session_state.get(key)
+    return last is None or (now_ts() - last) >= interval
 
 
-def fetch_timeseries(item_id, timestep="24h"):
-    try:
-        return (_get(f"/timeseries?timestep={timestep}&id={item_id}") or {}).get("data") or []
-    except Exception:
-        return []
+def recompute():
+    st.session_state["data"] = compute_flips(
+        st.session_state.get("latest", {}),
+        st.session_state.get("mapping", []),
+        st.session_state.get("hour_vols", {}),
+        st.session_state.get("fmin_vols", {}),
+    )
 
 
-def tax(price):
-    if price < 50:
-        return 0
-    return int(min(price * TAX_RATE, TAX_CAP))
+def render_header(price_age, volume_age):
+    timing_kind, timing_title, timing_body = get_timing()
+    st.markdown(
+        f"""
+        <div class="hero-card">
+            <div>{status_badge('accent', 'OSRS Project')}{status_badge(timing_kind, timing_title)}</div>
+            <div class="hero-title">Grand Exchange Opportunity Dashboard</div>
+            <div class="hero-subtitle">A decision-first OSRS flipping dashboard for scalable trades, high-value uniques, momentum watchlist names, and emerging signals.</div>
+            <div style="margin-top:0.45rem;">{timing_body}</div>
+            <div class="small-note">Prices updated {fmt_ago(price_age)} · Volumes updated {fmt_ago(volume_age)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-def _vols(hour_bucket, fmin_bucket):
-    def extract(b):
-        if not b:
-            return 0, 0
-        if isinstance(b, dict):
-            return int(b.get("highPriceVolume") or 0), int(b.get("lowPriceVolume") or 0)
-        try:
-            v = int(b)
-            return v // 2, v // 2
-        except (TypeError, ValueError):
-            return 0, 0
+def sidebar_controls(all_rows):
+    st.sidebar.title("Controls")
+    min_profit = st.sidebar.number_input("Min profit / item", min_value=0, value=1000, step=100)
+    min_volume = st.sidebar.number_input("Min total volume / hr", min_value=0, value=50, step=10)
+    max_buy = st.sidebar.number_input("Max buy price", min_value=0, value=500_000_000, step=100_000)
+    trend_filter = st.sidebar.multiselect(
+        "Trend states",
+        ["Building", "Pullback", "Extended", "Weakening", "Flat"],
+        default=["Building", "Pullback", "Extended", "Weakening", "Flat"],
+    )
+    tax_cap_only = st.sidebar.checkbox("Tax-cap items only", value=False)
+    st.sidebar.caption("Filters apply to the main ranked tables so you can narrow opportunities without changing the underlying market logic.")
 
-    bh, sh = extract(hour_bucket)
-    if bh > 0 or sh > 0:
-        return bh, sh
-    b5, s5 = extract(fmin_bucket)
-    return b5 * 12, s5 * 12
-
-
-def fill_quality(ratio):
-    if ratio is None:
-        return 0.3, "No data"
-    if 0.8 <= ratio <= 1.5:
-        return 1.0, "Ideal"
-    if 1.5 < ratio <= 3.0:
-        return 0.7, "High demand"
-    if ratio > 3.0:
-        return 0.4, "Hard to buy"
-    if 0.4 <= ratio < 0.8:
-        return 0.8, "Slight flood"
-    return 0.5, "Flooded"
-
-
-def build_rows(latest, mapping, hour_vols, fmin_vols):
-    mapping_by_id = {item["id"]: item for item in mapping}
-    rows = []
-    for id_str, quote in latest.items():
-        item = mapping_by_id.get(int(id_str))
-        if not item:
+    filtered = []
+    for row in all_rows:
+        if (row.get("profit_unit", 0) or 0) < min_profit:
             continue
-        buy_price = quote.get("low") or 0
-        sell_price = quote.get("high") or 0
-        ge_limit = item.get("limit") or 0
-        if not buy_price or not sell_price or not ge_limit or sell_price <= buy_price:
+        if (row.get("total_hr", 0) or 0) < min_volume:
             continue
-        item_tax = tax(sell_price)
-        profit_unit = sell_price - buy_price - item_tax
-        if profit_unit <= 0:
+        if (row.get("buy_price", 0) or 0) > max_buy:
             continue
-        roi = (profit_unit / buy_price) * 100
-        buy_qty_hr, sell_qty_hr = _vols(hour_vols.get(id_str), fmin_vols.get(id_str))
-        total_hr = buy_qty_hr + sell_qty_hr
-        ratio = round(buy_qty_hr / sell_qty_hr, 2) if sell_qty_hr > 0 else None
-        fq_mult, fq_label = fill_quality(ratio)
-        potential_profit = profit_unit * ge_limit
-        adj_potential = potential_profit * fq_mult
-        fills_4hr = sell_qty_hr * 4
-        realistic_units = min(ge_limit, max(1, fills_4hr)) if fills_4hr > 0 else ge_limit
-        realistic_profit = profit_unit * realistic_units
-        rows.append({
-            "id": int(id_str),
-            "name": item["name"],
-            "buy_price": buy_price,
-            "sell_price": sell_price,
-            "tax": item_tax,
-            "profit_unit": profit_unit,
-            "roi": round(roi, 2),
-            "buy_qty_hr": buy_qty_hr,
-            "sell_qty_hr": sell_qty_hr,
-            "total_hr": total_hr,
-            "ratio": ratio,
-            "fq_label": fq_label,
-            "fq_mult": fq_mult,
-            "ge_limit": ge_limit,
-            "potential_profit": potential_profit,
-            "adj_potential": adj_potential,
-            "realistic_profit": realistic_profit,
-            "tax_cap": item_tax == TAX_CAP,
-            "daily_volume": total_hr * 24,
-        })
-    return rows
+        if row.get("trend", "Flat") not in trend_filter:
+            continue
+        if tax_cap_only and not row.get("tax_cap"):
+            continue
+        filtered.append(row)
+    return filtered
 
 
-def pct_change(cur, prev):
-    try:
-        cur = float(cur)
-        prev = float(prev)
-        if prev <= 0:
-            return None
-        return round(((cur - prev) / prev) * 100, 2)
-    except Exception:
-        return None
+def render_tab_intro(tab_name):
+    st.markdown(f'<div class="section-subtitle tab-intro">{TAB_COPY[tab_name]}</div>', unsafe_allow_html=True)
 
 
-def classify_trend(ch1, ch7, ch30):
-    ch1 = ch1 if ch1 is not None else 0
-    ch7 = ch7 if ch7 is not None else 0
-    ch30 = ch30 if ch30 is not None else 0
-    if ch30 > 5 and ch7 < 0 and ch1 < 0:
-        return "Pullback"
-    if ch30 > 5 and ch7 > 0 and ch1 > -1:
-        return "Building"
-    if ch30 > 15 and ch7 > 5 and ch1 > 2:
-        return "Extended"
-    if ch30 <= 0 and ch7 < 0:
-        return "Weakening"
-    return "Flat"
+def render_table(rows, title, columns, formatters, height=540):
+    st.markdown(f'<div class="section-title">{title}</div>', unsafe_allow_html=True)
+    if not rows:
+        st.info("No items matched the current view.")
+        return
+    df = to_df(rows, columns)
+    st.dataframe(style_dataframe(df, formatters=formatters), use_container_width=True, height=height)
 
 
-def event_flags(item):
-    flags = []
-    ch1 = item.get("chg_1d")
-    ch7 = item.get("chg_7d")
-    ch30 = item.get("chg_30d")
-    roi = item.get("roi", 0) or 0
-    buy_hr = item.get("buy_qty_hr", 0) or 0
-    sell_hr = item.get("sell_qty_hr", 0) or 0
-    ratio = item.get("ratio")
-    profit = item.get("profit_unit", 0) or 0
-
-    if ch1 is not None and abs(ch1) >= 5:
-        flags.append("1D shock")
-    if ch7 is not None and abs(ch7) >= 10:
-        flags.append("7D move")
-    if ch30 is not None and abs(ch30) >= 15:
-        flags.append("30D regime")
-    if roi >= 8:
-        flags.append("Wide spread")
-    if profit >= 500_000:
-        flags.append("High gp/item")
-    if buy_hr + sell_hr >= 500:
-        flags.append("Liquid")
-    if ratio is not None and (ratio >= 2.0 or ratio <= 0.6):
-        flags.append("Flow imbalance")
-
-    priority = 0
-    if "1D shock" in flags:
-        priority += 3
-    if "7D move" in flags:
-        priority += 2
-    if "30D regime" in flags:
-        priority += 2
-    if "Wide spread" in flags:
-        priority += 2
-    if "High gp/item" in flags:
-        priority += 1
-    if "Liquid" in flags:
-        priority += 1
-    if "Flow imbalance" in flags:
-        priority += 1
-
-    return flags[:4], priority
+def render_watchlist(rows):
+    st.markdown('<div class="section-title">Core watchlist</div>', unsafe_allow_html=True)
+    if not rows:
+        st.info("Watchlist data is not available yet.")
+        return
+    for row in rows[:12]:
+        ratio_kind, ratio_label = ratio_state(row.get("ratio"))
+        c1, c2 = st.columns([3.2, 1.2])
+        with c1:
+            st.markdown(f"### {row['name']}")
+            st.markdown(
+                status_badge(trend_state(row.get("trend", "Flat")), row.get("trend", "Flat"))
+                + status_badge(ratio_kind, ratio_label)
+                + status_badge("accent", f"Score {compute_score(row)}"),
+                unsafe_allow_html=True,
+            )
+            st.caption(WATCHLIST_CATALYSTS.get(row["name"], ""))
+            st.write(
+                f"Spread {fmt_gp(row.get('profit_unit'))} | ROI {fmt_pct(row.get('roi'))} | "
+                f"1D {fmt_pct(row.get('chg_1d'))} | 7D {fmt_pct(row.get('chg_7d'))} | 30D {fmt_pct(row.get('chg_30d'))}"
+            )
+            st.write(f"Flags: {row.get('flags', 'Quiet')}")
+        with c2:
+            st.metric("Buy", fmt_gp(row.get("buy_price")))
+            st.metric("Sell", fmt_gp(row.get("sell_price")))
+            st.metric("Daily volume", fmt_int(row.get("daily_volume")))
+        st.divider()
 
 
-def enrich_with_trends(rows):
-    enriched = []
-    for r in rows:
-        item = dict(r)
-        ts = fetch_timeseries(r["id"], "24h")
-        item["chg_1d"] = item["chg_7d"] = item["chg_30d"] = None
-        item["trend"] = "Flat"
-        if ts and len(ts) >= 31:
-            highs = [p.get("avgHighPrice") or 0 for p in ts if p.get("avgHighPrice")]
-            if len(highs) >= 31:
-                cur = highs[-1]
-                item["chg_1d"] = pct_change(cur, highs[-2])
-                item["chg_7d"] = pct_change(cur, highs[-8])
-                item["chg_30d"] = pct_change(cur, highs[-31])
-                item["trend"] = classify_trend(item["chg_1d"], item["chg_7d"], item["chg_30d"])
-        flags, priority = event_flags(item)
-        item["flags"] = ", ".join(flags) if flags else "Quiet"
-        item["priority"] = priority
-        enriched.append(item)
-    return enriched
+def render_signals(rows):
+    st.markdown('<div class="section-title">Signal board</div>', unsafe_allow_html=True)
+    if not rows:
+        st.info("No signal names met the current threshold.")
+        return
+    data = []
+    for row in rows:
+        data.append(
+            {
+                "Item": row.get("name"),
+                "Reason": row.get("candidate_reason", ""),
+                "Score": compute_score(row),
+                "Trend": row.get("trend"),
+                "1D": row.get("chg_1d"),
+                "7D": row.get("chg_7d"),
+                "Profit": row.get("profit_unit"),
+                "Flags": row.get("flags"),
+            }
+        )
+    df = pd.DataFrame(data)
+    st.dataframe(
+        style_dataframe(df, formatters={"1D": fmt_pct, "7D": fmt_pct, "Profit": fmt_gp, "Score": lambda x: f"{x:.2f}"}),
+        use_container_width=True,
+        height=420,
+    )
 
 
-def is_viable_bulk(r):
-    buy_hr = r.get("buy_qty_hr", 0) or 0
-    sell_hr = r.get("sell_qty_hr", 0) or 0
-    ratio = r.get("ratio")
-    ge = r.get("ge_limit", 0) or 0
-    profit = r.get("profit_unit", 0) or 0
-    realistic = r.get("realistic_profit", 0) or 0
-    buy_price = r.get("buy_price", 0) or 0
+def render_timeseries_chart(item_name, rows):
+    options = {row["name"]: row["id"] for row in rows}
+    if not options:
+        return
+    names = list(options.keys())
+    default_name = item_name if item_name in options else names[0]
+    selected = st.selectbox("Chart item", options=names, index=names.index(default_name))
+    series = fetch_timeseries(options[selected], timestep="24h")
+    if not series:
+        st.info("No historical data returned for this item.")
+        return
+    df = pd.DataFrame(series)
+    if df.empty or "timestamp" not in df.columns:
+        st.info("Historical series is incomplete.")
+        return
+    df["dt"] = pd.to_datetime(df["timestamp"], unit="s", utc=True).dt.tz_convert("America/New_York")
+    fig = go.Figure()
+    if "avgHighPrice" in df.columns:
+        fig.add_trace(go.Scatter(x=df["dt"], y=df["avgHighPrice"], mode="lines", name="Avg High", line=dict(color=THEME["accent"], width=3)))
+    if "avgLowPrice" in df.columns:
+        fig.add_trace(go.Scatter(x=df["dt"], y=df["avgLowPrice"], mode="lines", name="Avg Low", line=dict(color=THEME["positive"], width=2)))
+    fig.update_layout(
+        height=360,
+        paper_bgcolor=THEME["panel"],
+        plot_bgcolor=THEME["panel"],
+        font=dict(color=THEME["text"]),
+        margin=dict(l=20, r=20, t=30, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=True, gridcolor="rgba(148,163,184,0.12)"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-    if buy_hr < 100 or sell_hr < 50:
-        return False
-    if ratio is None or ratio < 0.5 or ratio > 3.0:
-        return False
-    if min(ge, sell_hr * 4) < max(100, ge * 0.05):
-        return False
-    if profit < 100 or realistic < 100_000 or buy_price < 500:
-        return False
-    return True
+
+def main():
+    inject_theme(st)
+    st_autorefresh(interval=60_000, key="dashboard_refresh")
+    load_mapping()
+    if stale("price_ts", PRICE_INTERVAL):
+        do_prices()
+    if stale("volume_ts", VOLUME_INTERVAL):
+        do_volumes()
+    recompute()
+
+    bulk, singular, high_roi, watch, signals, all_rows = st.session_state.get("data", ([], [], [], [], [], []))
+    bulk = add_score(bulk)
+    singular = add_score(singular)
+    high_roi = add_score(high_roi)
+    watch = add_score(watch)
+    signals = add_score(signals)
+    all_rows = add_score(all_rows)
+
+    filtered_all = sidebar_controls(all_rows)
+    filtered_names = {row["name"] for row in filtered_all}
+    filtered_bulk = [row for row in bulk if row["name"] in filtered_names]
+    filtered_singular = [row for row in singular if row["name"] in filtered_names]
+    filtered_high_roi = [row for row in high_roi if row["name"] in filtered_names]
+
+    render_header(secs_ago(st.session_state.get("price_ts")), secs_ago(st.session_state.get("volume_ts")))
+
+    k1, k2, k3, k4 = st.columns(4)
+    with k1:
+        st.metric("Bulk ideas", len(filtered_bulk))
+    with k2:
+        st.metric("Singular ideas", len(filtered_singular))
+    with k3:
+        top_profit = max([row.get("realistic_profit", 0) or 0 for row in filtered_all], default=0)
+        st.metric("Top realistic profit", fmt_gp(top_profit))
+    with k4:
+        avg_roi = round(pd.Series([row.get("roi", 0) or 0 for row in filtered_all]).mean(), 2) if filtered_all else 0
+        st.metric("Average ROI", f"{avg_roi}%")
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Bulk", "Singular", "High ROI", "Watchlist", "Signals"])
+
+    with tab1:
+        render_tab_intro("Bulk")
+        render_table(
+            sorted(filtered_bulk, key=lambda row: (-row.get("score", 0), -row.get("realistic_profit", 0))),
+            "Bulk flips",
+            ["name", "score", "buy_price", "sell_price", "profit_unit", "roi", "ge_limit", "total_hr", "ratio", "realistic_profit"],
+            {"score": lambda x: f"{x:.2f}", "buy_price": fmt_gp, "sell_price": fmt_gp, "profit_unit": fmt_gp, "roi": fmt_pct, "ge_limit": fmt_int, "total_hr": fmt_int, "ratio": lambda x: "—" if x is None else f"{x:.2f}", "realistic_profit": fmt_gp},
+        )
+        render_timeseries_chart(filtered_bulk[0]["name"] if filtered_bulk else "", filtered_bulk or bulk)
+
+    with tab2:
+        render_tab_intro("Singular")
+        render_table(
+            sorted(filtered_singular, key=lambda row: (-row.get("score", 0), -row.get("profit_unit", 0))),
+            "Singular flips",
+            ["name", "score", "buy_price", "sell_price", "profit_unit", "roi", "ge_limit", "total_hr", "ratio", "adj_potential"],
+            {"score": lambda x: f"{x:.2f}", "buy_price": fmt_gp, "sell_price": fmt_gp, "profit_unit": fmt_gp, "roi": fmt_pct, "ge_limit": fmt_int, "total_hr": fmt_int, "ratio": lambda x: "—" if x is None else f"{x:.2f}", "adj_potential": fmt_gp},
+        )
+
+    with tab3:
+        render_tab_intro("High ROI")
+        render_table(
+            sorted(filtered_high_roi, key=lambda row: (-row.get("score", 0), -row.get("roi", 0))),
+            "High ROI opportunities",
+            ["name", "score", "buy_price", "sell_price", "profit_unit", "roi", "total_hr", "ratio", "ge_limit"],
+            {"score": lambda x: f"{x:.2f}", "buy_price": fmt_gp, "sell_price": fmt_gp, "profit_unit": fmt_gp, "roi": fmt_pct, "total_hr": fmt_int, "ratio": lambda x: "—" if x is None else f"{x:.2f}", "ge_limit": fmt_int},
+        )
+
+    with tab4:
+        render_tab_intro("Watchlist")
+        render_watchlist(watch)
+
+    with tab5:
+        render_tab_intro("Signals")
+        render_signals(signals)
 
 
-def compute_flips(latest, mapping, hour_vols, fmin_vols):
-    rows = build_rows(latest, mapping, hour_vols, fmin_vols)
-
-    bulk = sorted(
-        [r for r in rows if r["ge_limit"] >= 1000 and r["total_hr"] >= 200 and is_viable_bulk(r)],
-        key=lambda x: (-x["profit_unit"], -x["fq_mult"], -x["ge_limit"], -x["roi"]),
-    )[:60]
-    singular = sorted(
-        [r for r in rows if r["ge_limit"] <= 15 and r["sell_price"] >= 500_000 and r["total_hr"] >= 1],
-        key=lambda x: -(x["profit_unit"] * x["fq_mult"]),
-    )[:40]
-    high_roi = sorted(
-        [r for r in rows if r["total_hr"] >= 50 and r["roi"] >= 5],
-        key=lambda x: -x["roi"],
-    )[:40]
-
-    all_by_name = {r["name"].lower(): r for r in rows}
-
-    watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
-    watch = enrich_with_trends(watch)
-    watch = sorted(watch, key=lambda r: (-r.get("priority", 0), -r.get("profit_unit", 0), r["name"]))
-
-    watch_names = {w["name"].lower() for w in watch}
-    candidates = [
-        all_by_name[n.lower()]
-        for n in DISCOVERY_UNIVERSE
-        if n.lower() in all_by_name and n.lower() not in watch_names
-    ]
-    candidates = enrich_with_trends(candidates)
-    for c in candidates:
-        c["candidate_reason"] = DISCOVERY_UNIVERSE.get(c["name"], "")
-    candidates = [c for c in candidates if c.get("priority", 0) >= 3]
-    candidates = sorted(
-        candidates,
-        key=lambda r: (-r.get("priority", 0), -abs(r.get("chg_1d") or 0), -abs(r.get("chg_7d") or 0), -r.get("profit_unit", 0)),
-    )[:12]
-
-    return bulk, singular, high_roi, watch, candidates, rows
+if __name__ == "__main__":
+    main()
