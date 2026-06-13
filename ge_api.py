@@ -64,7 +64,6 @@ WATCHLIST = [
     ("Tanzanite fang",                "Zulrah",      "Toxic blowpipe component -- universal early-mid BIS range weapon"),
     ("Magic fang",                    "Zulrah",      "Toxic staff upgrade -- budget mage weapon option"),
     ("Serpentine visage",             "Zulrah",      "Serpentine helm component -- slayer/venom utility"),
-    ("Zulrah's scales",               "Zulrah",      "Blowpipe/serp helm charge resource -- consumable; constant demand"),
     # -- Cerberus --
     ("Primordial crystal",            "Cerberus",    "Primordial boots component -- BIS melee boots; 1/512 drop rate"),
     ("Eternal crystal",               "Cerberus",    "Eternal boots component -- BIS mage boots; 1/512 drop rate"),
@@ -79,7 +78,7 @@ WATCHLIST = [
     ("Blood moon helm",               "Varlamore",   "Mid-tier melee helm -- Varlamore activity proxy"),
     ("Blood moon chestplate",         "Varlamore",   "Mid-tier melee body -- tied to helm demand"),
     ("Blood moon tassets",            "Varlamore",   "Mid-tier melee legs -- completes Blood Moon set"),
-    # -- Raids 4 / Fractured Archive prep --
+    # -- Raids 4 / Fractured Archive --
     ("Enhanced crystal weapon seed",  "Raids/FA",    "Corrupted Gauntlet -- Sweep-Up may increase CG supply"),
     ("Crystal armour seed",           "Raids/FA",    "CG armour seed -- Raids 4 prep increases CG participation"),
     # -- Specialist Weapons --
@@ -95,19 +94,43 @@ WATCHLIST = [
     ("Arcane spirit shield",          "Accessories", "Mage spirit shield -- steady collector demand"),
     ("Spectral spirit shield",        "Accessories", "Prayer/mage def shield -- niche but tracked"),
     # -- High-Ticket Clue Items --
-    ("3rd age platebody",             "Prestige",    "Ultra-rare hard/elite clue -- store-of-value; ~1/42K rate"),
-    ("3rd age platelegs",             "Prestige",    "Ultra-rare hard clue -- pairs with platebody"),
-    ("3rd age full helmet",           "Prestige",    "Ultra-rare hard clue -- completes 3rd age melee set"),
-    ("3rd age longsword",             "Prestige",    "Rare hard clue reward -- speculative; low supply"),
-    ("3rd age bow",                   "Prestige",    "Ultra-rare elite/master clue -- range prestige item"),
-    ("3rd age wand",                  "Prestige",    "Ultra-rare elite clue -- mage prestige item"),
-    ("3rd age cloak",                 "Prestige",    "Rare master clue -- complement to 3rd age sets"),
-    ("Ranger boots",                  "Prestige",    "Medium clue BIS range boots -- high demand relative to rate"),
-    ("Robin hood hat",                "Prestige",    "Hard clue range helm -- consistently desired cosmetic"),
-    ("Gilded scimitar",               "Prestige",    "Hard/elite gilded -- cosmetic floor item; collector appeal"),
-    ("Gilded platebody",              "Prestige",    "Elite/master gilded armour -- prestige flex item"),
-    ("Gilded platelegs",              "Prestige",    "Elite/master gilded -- pairs with platebody"),
-    ("Gilded full helm",              "Prestige",    "Elite/master gilded -- completes gilded melee set"),
+    ("3rd age platebody",             "Clue",        "Ultra-rare hard/elite clue -- store-of-value; ~1/42K rate"),
+    ("3rd age platelegs",             "Clue",        "Ultra-rare hard clue -- pairs with platebody"),
+    ("3rd age full helmet",           "Clue",        "Ultra-rare hard clue -- completes 3rd age melee set"),
+    ("3rd age longsword",             "Clue",        "Rare hard clue reward -- speculative; low supply"),
+    ("3rd age bow",                   "Clue",        "Ultra-rare elite/master clue -- range prestige item"),
+    ("3rd age wand",                  "Clue",        "Ultra-rare elite clue -- mage prestige item"),
+    ("3rd age cloak",                 "Clue",        "Rare master clue -- complement to 3rd age sets"),
+    ("Ranger boots",                  "Clue",        "Medium clue BIS range boots -- high demand relative to rate"),
+    ("Robin hood hat",                "Clue",        "Hard clue range helm -- consistently desired cosmetic"),
+    ("Gilded platebody",              "Clue",        "Elite/master gilded armour -- prestige flex item"),
+    ("Gilded platelegs",              "Clue",        "Elite/master gilded -- pairs with platebody"),
+    ("Gilded full helm",              "Clue",        "Elite/master gilded -- completes gilded melee set"),
+    ("Gilded scimitar",               "Clue",        "Hard/elite gilded -- cosmetic floor item; collector appeal"),
+    # Blessed dragonhide sets (God d'hide) -- hard/elite clue
+    ("Saradomin d'hide body",          "Clue",        "Blessed d'hide -- God Wars cosmetic; consistent hard clue demand"),
+    ("Armadyl d'hide body",            "Clue",        "Blessed d'hide -- Armadyl cosmetic variant"),
+    ("Zamorak d'hide body",            "Clue",        "Blessed d'hide -- Zamorak cosmetic variant"),
+    ("Ancient d'hide body",            "Clue",        "Blessed d'hide -- Ancient cosmetic variant"),
+    ("Bandos d'hide body",             "Clue",        "Blessed d'hide -- Bandos cosmetic variant"),
+    ("Guthix d'hide body",             "Clue",        "Blessed d'hide -- Guthix cosmetic variant"),
+    # God d'hide boots (hard clue)
+    ("Saradomin d'hide boots",         "Clue",        "Blessed boots -- cosmetic upgrade over black d'hide boots"),
+    ("Armadyl d'hide boots",           "Clue",        "Blessed boots -- Armadyl cosmetic variant"),
+    ("Zamorak d'hide boots",           "Clue",        "Blessed boots -- Zamorak cosmetic variant"),
+    # Ornament kits (elite clue)
+    ("Berserker necklace ornament kit","Clue",        "Elite clue ornament -- decorative upgrade; low supply"),
+    ("Torture ornament kit",           "Clue",        "Elite clue ornament -- amulet of torture cosmetic"),
+    ("Occult ornament kit",            "Clue",        "Elite clue ornament -- occult necklace cosmetic"),
+    ("Dragon defender ornament kit",   "Clue",        "Elite clue ornament -- defender cosmetic; consistent demand"),
+    ("Helm of neitiznot (f)",          "Clue",        "Elite clue cosmetic -- popular mid-tier helm upgrade look"),
+    # Ranger set
+    ("Ranger gloves",                  "Clue",        "Hard clue -- BIS range gloves for certain setups"),
+    ("Holy sandals",                   "Clue",        "Hard clue -- niche prayer/cosmetic appeal"),
+    # Miscellaneous high-demand clue items
+    ("Pirate's hat",                   "Clue",        "Medium/hard clue -- popular cosmetic; consistent collector demand"),
+    ("Musketeer tabard",               "Clue",        "Medium clue -- fashionscape demand"),
+    ("Highwayman mask",                "Clue",        "Medium clue -- recognisable cosmetic; steady demand"),
 ]
 
 WATCHLIST_NAMES     = [w[0] for w in WATCHLIST]
@@ -117,43 +140,46 @@ WATCHLIST_CATEGORY  = {w[0]: w[1] for w in WATCHLIST}
 
 # Signals Universe -- TYPE | STATUS | REASON
 SIGNALS_UNIVERSE = {
-    # ---- ACTIVE: Blood Moon Rises (June 30, 2026) ----
-    "Necklace of anguish":          "New Content | ACTIVE | Necklace of Rupture (new BIS range neck) drops June 30 -- direct displacement; sell into hype before release",
-    "Soulreaper axe":               "Game Update | ACTIVE | Summer Sweep-Up live: major rework -- +4 str, stacks to 5, 50% acc buff, 12.5% def drain, min 30% spec hit. Clear price catalyst",
-    "Sanguinesti staff (uncharged)":"Game Update | ACTIVE | Summer Sweep-Up: 6% DPS buff, heal 1-in-5 (up from 1-in-6), charge cost 3->2 blood runes. Demand spike likely",
-    "Ghrazi rapier":                "Game Update | ACTIVE | Summer Sweep-Up: +4 str bonus guarantees extra max hit in all setups. ~2-2.5% DPS buff. Watch for price reaction",
-    "Inquisitor's mace":            "Game Update | ACTIVE | Summer Sweep-Up: set bonus REMOVED -- mace standalone buffed (+5 str, +7 crush acc) but net weaker with full Inq set. Inq armour demand likely falls",
-    "Inquisitor's hauberk":         "Game Update | ACTIVE | Inquisitor set bonus removed -- pieces no longer synergise with mace. Demand for full set drops; individual pieces may slide",
-    "Inquisitor's plateskirt":      "Game Update | ACTIVE | Same as hauberk -- set bonus removal reduces value of wearing with mace. Watch for price decline",
-    # ---- ACTIVE: Raids 4 prep demand ----
-    "Twisted bow":                  "New Content | ACTIVE | Raids 4 (Autumn 2026) confirmed -- Tbow listed as mandatory prep gear by community. Sustained accumulation phase underway",
-    "Tumeken's shadow":             "New Content | ACTIVE | Raids 4 prep -- Shadow confirmed BIS mage for new raid. Community guides recommending it as must-have before release",
-    "Scythe of vitur":              "New Content | ACTIVE | Raids 4 prep -- Scythe listed as closest reference weapon for new raid mechanics. Demand building toward Autumn release",
-    # ---- WATCH: Blood Moon Rises supply/displacement plays ----
-    "Tormented bracelet":           "New Content | WATCH | Blood Moon Rises (June 30) adds Leech Fin -- new melee/hybrid BiS bracelet. Tormented bracelet may see displacement pressure",
-    "Osmumten's fang":              "New Content | WATCH | Crimson Bludgeon (new crush BIS spec) drops June 30 -- fang ecosystem unaffected but watch for market-wide high-ticket volatility around release",
-    "Zaryte crossbow":              "New Content | WATCH | Necklace of Rupture (new BIS range neck) releases June 30 -- upgrades ranged setups; crossbow demand proxy for range meta activity",
+    # ---- ACTIVE: Blood Moon Rises (June 30) ----
+    "Necklace of anguish":          "Game Update | ACTIVE | Necklace of Rupture (new BIS range neck) releases June 30 -- direct price displacement risk",
+    "Soulreaper axe":               "Game Update | ACTIVE | Summer Sweep-Up rework live -- stacks to 5, 50% acc buff, 12.5% def drain per hit",
+    "Sanguinesti staff (uncharged)":"Game Update | ACTIVE | Summer Sweep-Up: 6% DPS buff, charge cost cut 3->2 blood runes -- demand spike",
+    "Ghrazi rapier":                "Game Update | ACTIVE | Summer Sweep-Up: +4 strength bonus -- guaranteed extra max hit in all setups",
+    "Inquisitor's mace":            "Game Update | ACTIVE | Sweep-Up: standalone str buffed but set bonus removed -- net weaker with full Inq",
+    "Inquisitor's hauberk":         "Price Risk | ACTIVE | Inquisitor set bonus removed -- pieces no longer synergise; demand for full set softening",
+    "Inquisitor's plateskirt":      "Price Risk | ACTIVE | Same as hauberk -- set synergy gone; price risk if mace-only meta forms",
+    # ---- ACTIVE: Raids 4 prep ----
+    "Twisted bow":                  "Raids Prep | ACTIVE | Raids 4 (Autumn 2026) -- Tbow confirmed as prep BiS; community accumulating now",
+    "Tumeken's shadow":             "Raids Prep | ACTIVE | Raids 4 prep -- Shadow confirmed BIS mage for Fractured Archive; must-have",
+    "Scythe of vitur":              "Raids Prep | ACTIVE | Raids 4 prep -- Scythe closest reference melee weapon; accumulation phase",
+    # ---- WATCH: Blood Moon Rises displacement ----
+    "Tormented bracelet":           "Game Update | WATCH | Blood Moon Rises (June 30) may add BIS hybrid bracelet -- monitor for displacement",
+    "Zaryte crossbow":              "Meta Shift | WATCH | Necklace of Rupture buffs range setups June 30 -- crossbow demand proxy for range meta",
+    "Masori body (f)":              "Meta Shift | WATCH | Range meta improving with Rupture necklace -- BIS armour demand may rise",
     # ---- WATCH: Summer Sweep-Up ongoing reactions ----
-    "Ancestral robe top":           "Game Update | WATCH | Ancient scepters buffed to 10% magic damage (up from 5%) -- indirect mage DPS ecosystem buff; ancestral demand stable or mild uptick",
-    "Ancestral robe bottom":        "Game Update | WATCH | Tied to ancestral top -- same indirect mage DPS buff from scepter changes",
-    "Virtus robe top":              "Game Update | WATCH | Scepter buffs boost hybrid mage DPS setups -- Virtus benefits from wider mage DPS improvements",
-    "Virtus robe bottom":           "Game Update | WATCH | Tied to Virtus top demand",
-    "Venator ring":                 "Game Update | WATCH | Summer Sweep-Up: Venator bow made more consistent via new targeting -- ring demand proxy for range meta; watch for uptick",
-    "Enhanced crystal weapon seed": "New Content | WATCH | GE added to Corrupted Gauntlet in Sweep-Up blog -- easier CG access may increase Bowfa supply; seed price could soften",
-    "Dragon claws":                 "PvP Meta | WATCH | Summer Sweep-Up Eclipse atlatl nerfed 1-tick slower in PvP without full set -- claw spec value in PvP stays high by comparison",
-    "Elysian spirit shield":        "Supply Shock | WATCH | Fixed supply store-of-value; Blood Moon Rises hype driving general high-ticket market activity -- floor remains strong",
+    "Ancestral robe top":           "Game Update | WATCH | Ancient scepters buffed 5->10% magic damage -- mage DPS ecosystem lift",
+    "Ancestral robe bottom":        "Game Update | WATCH | Tied to ancestral top -- moves in tandem with mage DPS discussions",
+    "Virtus robe top":              "Meta Shift | WATCH | DT2 mage hybrid; benefits from scepter buff and shadow ecosystem strength",
+    "Virtus robe bottom":           "Meta Shift | WATCH | Tied to Virtus top demand",
+    "Venator ring":                 "Game Update | WATCH | Venator bow consistency fix in Sweep-Up -- ring demand proxy for range meta",
+    "Torva full helm":              "Meta Shift | WATCH | Completes Torva set; melee hype accelerating with Soulreaper buff",
+    "Justiciar faceguard":          "Meta Shift | WATCH | Tank meta indicator; set bonus removal may depress full-set demand",
+    # ---- WATCH: Supply / prestige plays ----
+    "Elysian spirit shield":        "Supply Shock | WATCH | Fixed supply store-of-value; Blood Moon Rises hype lifting high-ticket market",
+    "Enhanced crystal weapon seed": "Supply Shock | WATCH | CG supply may increase after Sweep-Up changes -- Bowfa ecosystem watch",
     # ---- WATCH: Raids 4 ecosystem ----
-    "Avernic defender hilt":        "New Content | WATCH | Raids 4 Autumn 2026 -- ToB participation expected to rise as players gear up; Avernic demand proxy for ToB activity",
-    "Dexterous prayer scroll":      "New Content | WATCH | CoX participation rising as players prep for Raids 4 -- Rigour scroll demand proxy for CoX activity levels",
-    "Arcane prayer scroll":         "New Content | WATCH | Same as Dexterous -- Augury demand proxy for CoX/prep activity",
-    "Bellator ring":                "New Content | WATCH | Raids 4 Autumn -- DT2 rings being accumulated as part of endgame gear prep; melee ring proxy",
-    "Ultor ring":                   "New Content | WATCH | Same as Bellator -- strength ring proxy for melee prep meta",
-    "Magus ring":                   "New Content | WATCH | Mage ring proxy -- benefits from both shadow demand and ancestral/scepter DPS buff discussions",
-    # ---- COOLING ----
-    "Zaryte vambraces":             "Meta Shift | COOLING | No specific catalyst this cycle; Nex activity stable but no new hype driver. Monitor for Raids 4 range demand proxy",
-    "Justiciar faceguard":          "Meta Shift | COOLING | No tank meta catalyst active; Inq set bonus removal may marginally shift attention away from full armour sets",
-    "Dragon hunter lance":          "Boss Demand | COOLING | No Vorkath/KBD rework announced; stable demand but no near-term spike catalyst",
-    "Dragon hunter crossbow":       "Boss Demand | COOLING | Same as lance -- no Vorkath rework in current roadmap. Hold steady",
+    "Avernic defender hilt":        "Raids Prep | WATCH | ToB participation rising as players gear for Raids 4 -- Avernic demand proxy",
+    "Dexterous prayer scroll":      "Raids Prep | WATCH | CoX participation increasing with Raids 4 prep -- Rigour scroll demand proxy",
+    "Bellator ring":                "Raids Prep | WATCH | DT2 melee ring -- accumulation proxy for Raids 4 melee prep",
+    "Ultor ring":                   "Raids Prep | WATCH | Strength ring -- follows melee meta; Soulreaper buff and Raids 4 hype",
+    "Magus ring":                   "Raids Prep | WATCH | Mage ring -- tied to Shadow demand and ancestral scepter ecosystem",
+    "Zaryte vambraces":             "Meta Shift | WATCH | Endgame range gloves BIS; Nex activity proxy",
+    # ---- WATCH: Boss demand ----
+    "Inquisitor's mace":            "Boss Demand | WATCH | Crush BIS standalone -- buffed in Sweep-Up; Nightmare/Phosani activity proxy",
+    "Dragon claws":                 "PvP Meta | WATCH | Spec weapon -- rises sharply on PvP tournament or wilderness meta announcements",
+    "Volatile orb":                 "Community Hype | WATCH | CoX spec orb; spikes on streamer content and CoX meta discussion",
+    "Dragon hunter lance":          "Boss Demand | WATCH | Vorkath/KBD BIS melee -- spikes on boss rework or slayer task weight changes",
+    "Dragon hunter crossbow":       "Boss Demand | WATCH | Vorkath BIS range -- moves with lance; sensitive to Vorkath task changes",
 }
 
 SHIFTS_HIGH_TICKET_SEEDS = [

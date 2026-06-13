@@ -465,43 +465,56 @@ RAID_CATS  = {"CoX", "ToB", "ToA", "Nightmare", "Raids/FA"}
 BOSS_CATS  = {"Nex", "DT2", "GWD", "Zulrah", "Cerberus", "Dagannoth",
               "Varlamore", "Specialist", "Accessories"}
 CLUE_CATS  = {"Clue"}
-MIN_PRICE  = 1_000_000  # 1M floor
+MIN_PRICE      = 1_000_000  # 1M floor for boss/raid
+CLUE_MIN_PRICE = 500_000    # 500K floor for clue items
 
-def _tracker_card(label, rows):
+def _tracker_card(label, rows, floor=None):
     """Render a rolling 7D aggregate tracker card for a group of items."""
-    total_now  = sum(r.get("sell_price") or 0 for r in rows if (r.get("sell_price") or 0) >= MIN_PRICE)
-    total_prev = sum((r.get("sell_price") or 0) / (1 + (r.get("chg_7d") or 0) / 100)
-                     for r in rows if (r.get("sell_price") or 0) >= MIN_PRICE and r.get("chg_7d") is not None)
+    if floor is None:
+        floor = MIN_PRICE
+    valid = [r for r in rows if (r.get("sell_price") or 0) >= floor]
+    total_now  = sum(r.get("sell_price") or 0 for r in valid)
+    total_prev = sum(
+        (r.get("sell_price") or 0) / (1 + (r.get("chg_7d") or 0) / 100)
+        for r in valid if r.get("chg_7d") is not None
+    )
     if total_prev > 0:
-        pct   = (total_now - total_prev) / total_prev * 100
-        delta = total_now - total_prev
-        sign  = "+" if pct >= 0 else ""
+        pct    = (total_now - total_prev) / total_prev * 100
+        delta  = total_now - total_prev
+        sign   = "+" if pct >= 0 else ""
         d_sign = "+" if delta >= 0 else ""
         pct_str   = f"{sign}{pct:.2f}%"
         delta_str = f"({d_sign}{fmt_gp(int(delta))})"
-        color = "#4ade80" if pct >= 0 else "#f87171"
-        value_html = (
-            f"<span style='font-size:1.15rem; font-weight:700; color:{color};'>"
+        color     = "#4ade80" if pct >= 0 else "#f87171"
+        shift_html = (
+            f"<span style='font-size:1.05rem; font-weight:700; color:{color};'>"
             f"{pct_str}</span>&nbsp;"
-            f"<span style='font-size:.85rem; color:#94a3b8;'>{delta_str}</span>"
+            f"<span style='font-size:.82rem; color:#94a3b8;'>{delta_str}</span>"
         )
     else:
-        value_html = "<span style='color:#64748b'>No data</span>"
+        shift_html = "<span style='color:#64748b'>No data</span>"
+
+    total_val_str = fmt_gp(int(total_now))
 
     st.markdown(
         f"<div style='background:#1e293b; border:1px solid #334155; border-radius:8px;"
-        f"padding:12px 16px; height:100%;'>"
+        f"padding:12px 16px;'>"
         f"<div style='font-size:.72rem; font-weight:700; letter-spacing:.09em;"
         f"text-transform:uppercase; color:#64748b; margin-bottom:6px;'>{label}</div>"
-        f"<div>{value_html}</div>"
-        f"<div style='font-size:.68rem; color:#475569; margin-top:4px;'>"
-        f"Aggregate of {len([r for r in rows if (r.get('sell_price') or 0) >= MIN_PRICE])} tracked items</div>"
+        f"<div>{shift_html}</div>"
+        f"<div style='font-size:.75rem; color:#94a3b8; margin-top:5px;'>"
+        f"Total value: <span style='color:#e2e8f0; font-weight:600;'>{total_val_str}</span>"
+        f"</div>"
+        f"<div style='font-size:.68rem; color:#475569; margin-top:2px;'>"
+        f"{len(valid)} tracked items</div>"
         f"</div>",
         unsafe_allow_html=True,
     )
 
-def _show_watchlist_table(rows):
-    filtered = [r for r in rows if (r.get("sell_price") or 0) >= MIN_PRICE]
+def _show_watchlist_table(rows, floor=None):
+    if floor is None:
+        floor = MIN_PRICE
+    filtered = [r for r in rows if (r.get("sell_price") or 0) >= floor]
     if not filtered:
         st.caption("No items at or above 1M currently.")
         return
@@ -560,7 +573,7 @@ def render_watchlist(watch):
     c1, c2, c3 = st.columns(3, gap="medium")
     with c1: _tracker_card("Raid Uniques", raid_items)
     with c2: _tracker_card("Boss Uniques", boss_items)
-    with c3: _tracker_card("Clue Uniques", clue_items)
+    with c3: _tracker_card("Clue Uniques", clue_items, floor=CLUE_MIN_PRICE)
     st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
 
     st.markdown("<div class='section-header'>Raid Uniques</div>", unsafe_allow_html=True)
@@ -572,8 +585,8 @@ def render_watchlist(watch):
     _show_watchlist_table(boss_items)
 
     st.markdown("<div class='section-header'>Clue Uniques</div>", unsafe_allow_html=True)
-    st.caption("High-ticket clue scroll rewards. Fixed supply -- price driven entirely by demand.")
-    _show_watchlist_table(clue_items)
+    st.caption("High-demand clue scroll rewards (500K+). Fixed supply -- price driven entirely by demand.")
+    _show_watchlist_table(clue_items, floor=CLUE_MIN_PRICE)
 
 
 # -- Signals renderer ---------------------------------------------------------
@@ -585,51 +598,127 @@ SIG_TYPE_CSS = {
     "community hype": "sig-community",
     "pvp meta":       "sig-pvp-meta",
     "new content":    "sig-new-content",
+    "raids prep":     "sig-new-content",
+    "price risk":     "sig-supply-shock",
 }
+
+# Type label display mapping -- human-readable
+SIG_TYPE_DISPLAY = {
+    "game update":    "Game Update",
+    "meta shift":     "Meta Shift",
+    "boss demand":    "Boss Demand",
+    "supply shock":   "Supply/Risk",
+    "community hype": "Community",
+    "pvp meta":       "PvP Meta",
+    "new content":    "New Content",
+    "raids prep":     "Raids Prep",
+    "price risk":     "Price Risk",
+}
+
+def render_signals_legend():
+    st.markdown("""
+<div class='legend-box'>
+  <div class='legend-item'>
+    <span class='legend-badge' style='background:#1c1000;color:#fb923c;'>Game Update</span>
+    <span class='legend-desc'>Item directly affected by a patch, buff, or nerf</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge' style='background:#0c1a2e;color:#38bdf8;'>Meta Shift</span>
+    <span class='legend-desc'>Item reacting to a change in how players are building or fighting</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge' style='background:#1a1200;color:#fde68a;'>Boss Demand</span>
+    <span class='legend-desc'>Item tied to boss popularity or activity shifts</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge' style='background:#2d0a0a;color:#f87171;'>Supply/Risk</span>
+    <span class='legend-desc'>Fixed or tightening supply, or a downside risk to current price</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge' style='background:#052e16;color:#4ade80;'>Raids Prep</span>
+    <span class='legend-desc'>Demand rising as players gear up for an upcoming raid</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge' style='background:#2d1a0a;color:#fdba74;'>PvP Meta</span>
+    <span class='legend-desc'>Item reacting to PvP tournament, tournament, or wilderness meta</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge' style='background:#1a0c2e;color:#c084fc;'>Community</span>
+    <span class='legend-desc'>Streamer, Reddit, or community hype driving demand</span>
+  </div>
+  <div style='margin-top:6px; width:100%; border-top:1px solid #334155; padding-top:8px;'>
+    <span style='font-size:.72rem; font-weight:700; color:#64748b; margin-right:10px;'>STATUS:</span>
+    <span class='legend-badge' style='background:#2d0a0a;color:#f87171;'>ACTIVE</span>
+    <span class='legend-desc' style='margin-right:12px;'>Live catalyst now</span>
+    <span class='legend-badge' style='background:#1c1a00;color:#facc15;'>WATCH</span>
+    <span class='legend-desc' style='margin-right:12px;'>Upcoming or uncertain</span>
+    <span class='legend-badge' style='background:#1e293b;color:#94a3b8;border:1px solid #334155;'>COOLING</span>
+    <span class='legend-desc'>Catalyst fading -- monitor only</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 def render_signals(signals):
     if not signals:
         st.info("No signals data.")
         return
 
+    render_signals_legend()
+
     records = []
     for r in signals:
         raw = r.get("signal_context", "")
         parts = [p.strip() for p in raw.split("|")]
-        sig_type   = parts[0] if len(parts) > 0 else ""
-        sig_status = parts[1] if len(parts) > 1 else ""
-        sig_reason = parts[2] if len(parts) > 2 else ""
+        raw_type   = parts[0].strip().lower() if len(parts) > 0 else ""
+        sig_status = parts[1].strip()         if len(parts) > 1 else ""
+        sig_reason = parts[2].strip()         if len(parts) > 2 else ""
+        display_type = SIG_TYPE_DISPLAY.get(raw_type, parts[0].strip() if parts else "")
         records.append({
-            "_row":      r,
-            "name":      r.get("name",""),
-            "type":      sig_type,
-            "status":    sig_status.strip(),
-            "reason":    sig_reason,
-            "trend":     r.get("trend","Flat"),
-            "chg_1d":    r.get("chg_1d"),
-            "chg_7d":    r.get("chg_7d"),
+            "_row":       r,
+            "name":       r.get("name", ""),
+            "raw_type":   raw_type,
+            "type":       display_type,
+            "status":     sig_status,
+            "reason":     sig_reason,
+            "trend":      r.get("trend", "Flat"),
+            "chg_1d":     r.get("chg_1d"),
+            "chg_7d":     r.get("chg_7d"),
+            "chg_30d":    r.get("chg_30d"),
             "sell_price": r.get("sell_price"),
-            "ratio":     r.get("ratio"),
+            "ratio":      r.get("ratio"),
         })
 
     df = pd.DataFrame([{
-        "Item":       rec["name"],
-        "Type":       rec["type"],
-        "Status":     rec["status"],
-        "Reason":     rec["reason"],
-        "Trend":      rec["trend"],
-        "1D %":       fmt_pct(rec["chg_1d"]),
-        "7D %":       fmt_pct(rec["chg_7d"]),
-        "Price":      fmt_gp(rec["sell_price"]),
-        "B/S":        ratio_fmt(rec["ratio"]),
+        "Item":    rec["name"],
+        "Type":    rec["type"],
+        "Status":  rec["status"],
+        "Reason":  rec["reason"],
+        "Trend":   rec["trend"],
+        "1D %":    fmt_pct(rec["chg_1d"]),
+        "7D %":    fmt_pct(rec["chg_7d"]),
+        "30D %":   fmt_pct(rec["chg_30d"]),
+        "Price":   fmt_gp(rec["sell_price"]),
+        "B/S":     ratio_fmt(rec["ratio"]),
     } for rec in records])
 
     cols = list(df.columns)
+
+    TYPE_BG = {
+        "game update":    ("background:#1c1000", "color:#fb923c"),
+        "meta shift":     ("background:#0c1a2e", "color:#38bdf8"),
+        "boss demand":    ("background:#1a1200", "color:#fde68a"),
+        "supply shock":   ("background:#2d0a0a", "color:#f87171"),
+        "price risk":     ("background:#2d0a0a", "color:#f87171"),
+        "community hype": ("background:#1a0c2e", "color:#c084fc"),
+        "pvp meta":       ("background:#2d1a0a", "color:#fdba74"),
+        "new content":    ("background:#052e16", "color:#4ade80"),
+        "raids prep":     ("background:#052e16", "color:#4ade80"),
+    }
+
     def style_signals(row):
         idx = row.name
         if idx >= len(records): return [""] * len(cols)
         rec = records[idx]
-        r   = rec["_row"]
         result = []
         for col in cols:
             if col == "Trend":
@@ -638,25 +727,25 @@ def render_signals(signals):
                 result.append(pct_css(rec["chg_1d"]))
             elif col == "7D %":
                 result.append(pct_css(rec["chg_7d"]))
+            elif col == "30D %":
+                result.append(pct_css(rec["chg_30d"]))
             elif col == "B/S":
                 result.append(ratio_css(rec["ratio"]))
             elif col == "Status":
                 s = rec["status"].upper()
-                if s == "ACTIVE":   result.append("color:#f87171; font-weight:700")
-                elif s == "WATCH":  result.append("color:#facc15; font-weight:700")
-                elif s == "COOLING":result.append("color:#94a3b8; font-weight:700")
-                else:               result.append("")
+                if s == "ACTIVE":    result.append("background:#2d0a0a; color:#f87171; font-weight:700")
+                elif s == "WATCH":   result.append("background:#1c1a00; color:#facc15; font-weight:700")
+                elif s == "COOLING": result.append("color:#94a3b8; font-weight:600")
+                else:                result.append("")
             elif col == "Type":
-                css_key = rec["type"].lower().strip()
-                css_cls = SIG_TYPE_CSS.get(css_key, "")
-                result.append(f"color:#38bdf8" if not css_cls else "")
+                bg, fg = TYPE_BG.get(rec["raw_type"], ("", "color:#38bdf8"))
+                result.append(f"{bg}; {fg}; font-weight:600" if bg else f"{fg}")
             else:
                 result.append("")
         return result
 
     st.dataframe(df.style.apply(style_signals, axis=1),
-                 use_container_width=True, hide_index=True, height=600)
-
+                 use_container_width=True, hide_index=True, height=620)
 
 # -- Session / fetch ----------------------------------------------------------
 def stale(key, interval):
@@ -697,7 +786,7 @@ def do_shifts(all_rows, mapping):
 _tw_color, _tw_msg = get_timing()
 _cmap = {"green": "#22c55e", "yellow": "#facc15", "red": "#ef4444"}
 
-col_title, col_banner, col_btn = st.columns([3, 5, 1])
+col_title, col_banner, col_meta, col_btn = st.columns([3, 5, 2, 1])
 with col_title:
     st.markdown(
         "<h2 style='margin:0; padding:0; line-height:1.2; "
@@ -709,6 +798,20 @@ with col_banner:
         f"<div style='background:#1e293b; border-left:4px solid {_cmap[_tw_color]}; "
         f"padding:9px 14px; border-radius:6px; font-size:.84rem; "
         f"color:#e5e7eb; margin-top:2px; line-height:1.4;'>{_tw_msg}</div>",
+        unsafe_allow_html=True,
+    )
+with col_meta:
+    # Timestamps shown before data loads -- will be "never" initially
+    _p_ago_hdr = fmt_ago(secs_ago(st.session_state.get("price_ts")))
+    _v_ago_hdr = fmt_ago(secs_ago(st.session_state.get("volume_ts")))
+    st.markdown(
+        f"<div style='text-align:right; line-height:1.6; margin-top:4px;'>"
+        f"<span style='font-size:.72rem; color:#64748b;'>Prices: </span>"
+        f"<span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_p_ago_hdr}</span>"
+        f"<br>"
+        f"<span style='font-size:.72rem; color:#64748b;'>Volumes: </span>"
+        f"<span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_v_ago_hdr}</span>"
+        f"</div>",
         unsafe_allow_html=True,
     )
 with col_btn:
@@ -737,17 +840,6 @@ if not data:
     st.warning("Waiting for data..."); st.stop()
 
 bulk_rows, singular, high_roi, watch, signals, all_rows = data
-
-# -- KPI bar ------------------------------------------------------------------
-k1, k2, k3, k4, k5, k6 = st.columns(6)
-k1.metric("Bulk Flips",      len(bulk_rows))
-k2.metric("Singular Flips",  len(singular))
-k3.metric("High ROI",        len(high_roi))
-k4.metric("Watchlist Items", len(watch))
-k5.metric("Prices",          fmt_ago(p_ago))
-k6.metric("Volumes",         fmt_ago(v_ago))
-
-st.divider()
 
 # -- Tabs ---------------------------------------------------------------------
 tab_bulk, tab_sing, tab_roi, tab_shifts, tab_watch, tab_sig = st.tabs([
