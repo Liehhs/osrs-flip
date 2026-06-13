@@ -929,32 +929,42 @@ _cmap = {"green": "#22c55e", "yellow": "#facc15", "red": "#ef4444"}
 _p_ago_hdr = fmt_ago(secs_ago(st.session_state.get("price_ts")))
 _v_ago_hdr = fmt_ago(secs_ago(st.session_state.get("volume_ts")))
 
-_hdr_col, _btn_col = st.columns([6, 1])
-with _hdr_col:
-    st.markdown(
-        f"""<div style='display:flex; align-items:center; gap:14px; flex-wrap:nowrap;
-                        min-height:48px; padding:4px 0;'>
-          <div style='flex:0 0 auto; white-space:nowrap;'>
-            <h2 style='margin:0; padding:0; line-height:1.2;
-                       font-size:1.5rem; color:#f1f5f9;'>Owen's GE Tracker</h2>
-          </div>
-          <div style='flex:1 1 auto; min-width:0;'>
-            <div style='background:#1e293b; border-left:4px solid {_cmap[_tw_color]};
-                        padding:9px 14px; border-radius:6px; font-size:.84rem;
-                        color:#e5e7eb; line-height:1.4;'>{_tw_msg}</div>
-          </div>
-          <div style='flex:0 0 auto; white-space:nowrap; text-align:right; line-height:1.7;'>
-            <span style='font-size:.72rem; color:#64748b;'>Prices: </span>
-            <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_p_ago_hdr}</span>
-            <br>
-            <span style='font-size:.72rem; color:#64748b;'>Volumes: </span>
-            <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_v_ago_hdr}</span>
-          </div>
-        </div>""",
-        unsafe_allow_html=True,
-    )
-with _btn_col:
-    manual = st.button("Refresh", type="primary", use_container_width=True)
+st.markdown(
+    f"""<div style='display:flex; align-items:center; gap:14px; flex-wrap:nowrap;
+                    min-height:48px; padding:4px 0;'>
+      <div style='flex:0 0 auto; white-space:nowrap;'>
+        <h2 style='margin:0; padding:0; line-height:1.2;
+                   font-size:1.5rem; color:#f1f5f9;'>Owen's GE Tracker</h2>
+      </div>
+      <div style='flex:1 1 auto; min-width:0;'>
+        <div style='background:#1e293b; border-left:4px solid {_cmap[_tw_color]};
+                    padding:9px 14px; border-radius:6px; font-size:.84rem;
+                    color:#e5e7eb; line-height:1.4;'>{_tw_msg}</div>
+      </div>
+      <div style='flex:0 0 auto; white-space:nowrap; text-align:right; line-height:1.7;'>
+        <span style='font-size:.72rem; color:#64748b;'>Prices: </span>
+        <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_p_ago_hdr}</span>
+        <br>
+        <span style='font-size:.72rem; color:#64748b;'>Volumes: </span>
+        <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_v_ago_hdr}</span>
+      </div>
+    </div>""",
+    unsafe_allow_html=True,
+)
+
+# Button on its own full-width row, pinned right with CSS
+st.markdown("""
+<style>
+div[data-testid="stButton"] > button {
+    float: right;
+    margin-top: -52px;
+    position: relative;
+    z-index: 10;
+    min-width: 90px;
+}
+</style>
+""", unsafe_allow_html=True)
+manual = st.button("Refresh", type="primary")
 
 # -- Data loading -------------------------------------------------------------
 with st.spinner("Loading..."):
