@@ -320,4 +320,3 @@ def compute_flips(latest, mapping, hour_vols, fmin_vols):
     )[:12]
 
     return bulk, singular, high_roi, watch, candidates, rows
-SimplyCodes

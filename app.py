@@ -401,3 +401,4 @@ with t_guide:
 - Use Bulk and Singular tabs for execution; use Watchlist and Candidate Intake for thesis management.
         """
     )
+SimplyCodes
