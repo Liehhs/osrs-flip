@@ -63,6 +63,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
 def fmt_gp(n):
     if n is None: return "—"
     n = int(n)
@@ -70,7 +71,6 @@ def fmt_gp(n):
     if n >= 1_000_000:     return f"{n/1_000_000:.2f}M"
     if n >= 1_000:         return f"{n/1_000:.1f}K"
     return f"{n:,}"
-
 
 def get_timing():
     est = pytz.timezone("America/New_York")
@@ -84,6 +84,50 @@ def get_timing():
     else:
         return "red",    f"🔴  Buy window — Off-peak. Place buy offers now, sell into the afternoon. ({ts})"
 
+def ratio_display(r):
+    """Format buy/sell ratio with a warning flag if below 1.0."""
+    if r is None: return "—"
+    return f"⚠️ {r:.2f}" if r < 1.0 else f"{r:.2f}"
+
+def build_table(rows, mode="bulk"):
+    """
+    Build a DataFrame matching GE Tracker column structure:
+    Item | Current Price | Offer Price | Sell Price | Tax | Profit (gp) | ROI% |
+    Buy Qty/hr | Sell Qty/hr | B/S Ratio | GE Limit | 4hr Window Profit
+    """
+    out = []
+    for r in rows:
+        base = {
+            "Item":              r["name"],
+            "Current Price":     r["current_price"],
+            "Offer Price":       r["offer_price"],
+            "Sell Price":        r["sell_price"],
+            "Tax (gp)":          r["tax"],
+            "Profit / unit":     r["profit"],
+            "ROI %":             round(r["roi"], 2),
+            "Buy Qty / hr":      r["buy_qty_hr"],
+            "Sell Qty / hr":     r["sell_qty_hr"],
+            "B/S Ratio":         ratio_display(r["ratio"]),
+            "GE Limit":          r["limit"],
+        }
+        if mode == "bulk":
+            base["4hr Window Profit"] = r["cycle_profit"]
+        out.append(base)
+    return pd.DataFrame(out)
+
+INT_FMT = {
+    "Current Price":      "{:,.0f}",
+    "Offer Price":        "{:,.0f}",
+    "Sell Price":         "{:,.0f}",
+    "Tax (gp)":           "{:,.0f}",
+    "Profit / unit":      "{:,.0f}",
+    "ROI %":              "{:.2f}",
+    "Buy Qty / hr":       "{:,.0f}",
+    "Sell Qty / hr":      "{:,.0f}",
+    "GE Limit":           "{:,.0f}",
+    "4hr Window Profit":  "{:,.0f}",
+}
+
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -94,7 +138,7 @@ with st.sidebar:
     cash_m = st.number_input(
         "Amount in millions of GP",
         min_value=1.0, max_value=100000.0, value=100.0, step=0.5,
-        help="Enter in millions. 100 = 100,000,000 GP. Decimals OK (e.g. 150.7 = 150.7M)"
+        help="Enter in millions. 100 = 100M GP. Decimals OK (150.7 = 150.7M)"
     )
     cash_stack_gp = int(cash_m * 1_000_000)
     st.caption(f"= {cash_stack_gp:,} GP")
@@ -104,12 +148,13 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown(
-        "<div style='font-size:0.68rem;color:#334155;line-height:1.7'>"
+        "<div style='font-size:0.68rem;color:#334155;line-height:1.8'>"
         "Source: OSRS Wiki Real-Time Prices API<br>"
-        "Tax: 2% on seller (5M GP hard cap)<br>"
-        "Bulk = GE limit ≥1,000 + ≥500 trades/hr<br>"
+        "Tax: 2% on seller · 5M GP hard cap<br>"
+        "Bulk: GE limit ≥1,000 · ≥300 trades/hr<br>"
         "Trades/hr = 5-min bucket × 12<br>"
-        "Cycle GP capped by realistic fills, not raw limit"
+        "4hr window = profit × min(GE limit, affordable, fills in 4hrs)<br>"
+        "⚠️ B/S Ratio &lt;1.0 = more sellers than buyers"
         "</div>",
         unsafe_allow_html=True
     )
@@ -155,86 +200,87 @@ bulk, singular, watch = st.session_state["data"]
 
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Best Bulk — Cycle GP",   fmt_gp(bulk[0]["cycle_gp"]) if bulk else "—",      bulk[0]["name"] if bulk else "")
-k2.metric("Best Bulk — ROI",        f"{bulk[0]['roi']:.2f}%" if bulk else "—",          f"{fmt_gp(bulk[0]['margin'])} spread" if bulk else "")
-k3.metric("Best Singular — Spread", fmt_gp(singular[0]["margin"]) if singular else "—", singular[0]["name"] if singular else "")
-k4.metric("Watchlist Items Found",  str(len(watch)),                                     f"of {len(WATCHLIST_NAMES)} tracked")
-k5.metric("Cash Stack",             f"{cash_m:,.1f}M GP",                                f"{cash_stack_gp:,} GP")
+k1.metric(
+    "Best Bulk — 4hr Window",
+    fmt_gp(bulk[0]["cycle_profit"]) if bulk else "—",
+    bulk[0]["name"] if bulk else ""
+)
+k2.metric(
+    "Best Bulk — ROI",
+    f"{bulk[0]['roi']:.2f}%" if bulk else "—",
+    f"{fmt_gp(bulk[0]['profit'])} / unit" if bulk else ""
+)
+k3.metric(
+    "Best Singular — Profit/unit",
+    fmt_gp(singular[0]["profit"]) if singular else "—",
+    singular[0]["name"] if singular else ""
+)
+k4.metric(
+    "Watchlist Items Found",
+    str(len(watch)),
+    f"of {len(WATCHLIST_NAMES)} tracked"
+)
+k5.metric(
+    "Cash Stack",
+    f"{cash_m:,.1f}M GP",
+    f"{cash_stack_gp:,} GP"
+)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 
 # ── Bulk flips ────────────────────────────────────────────────────────────────
 st.markdown("<div class='section-label'>Recommended bulk flips — herbs, pots, runes, supplies</div>", unsafe_allow_html=True)
-st.markdown("<div class='note'>GE limit ≥1,000 · ≥500 trades/hr · ranked by realistic cycle GP using your cash stack</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='note'>"
+    "GE limit ≥1,000 · ≥300 trades/hr · "
+    "ranked by 4-hour window profit (post-tax profit × realistic units you can move) · "
+    "⚠️ B/S Ratio below 1.0 means more sellers than buyers — harder to fill your buy offers"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 if bulk:
-    df_bulk = pd.DataFrame([{
-        "Item":        r["name"],
-        "Buy":         r["buy"],
-        "Sell":        r["sell"],
-        "Spread":      r["margin"],
-        "ROI %":       round(r["roi"], 2),
-        "GE Limit":    r["limit"],
-        "Trades / hr": r["vol_per_hour"],
-        "Cycle GP":    r["cycle_gp"],
-    } for r in bulk])
-
+    df_bulk = build_table(bulk, mode="bulk")
     st.dataframe(
-        df_bulk.style.format({
-            "Buy":         "{:,.0f}",
-            "Sell":        "{:,.0f}",
-            "Spread":      "{:,.0f}",
-            "ROI %":       "{:.2f}",
-            "GE Limit":    "{:,.0f}",
-            "Trades / hr": "{:,.0f}",
-            "Cycle GP":    "{:,.0f}",
-        }),
+        df_bulk.style.format({k: v for k, v in INT_FMT.items() if k in df_bulk.columns}),
         use_container_width=True,
         hide_index=True,
     )
 
     fig = px.bar(
-        df_bulk.head(12), x="Item", y="Cycle GP",
+        df_bulk.head(12).copy(),
+        x="Item", y="4hr Window Profit",
         color="ROI %", color_continuous_scale="teal",
-        title="Top 12 bulk flips — estimated cycle GP",
+        title="Top 12 bulk flips — estimated 4-hour window profit (post-tax)",
         template="plotly_dark",
     )
     fig.update_layout(
         plot_bgcolor="#0f172a", paper_bgcolor="#0f172a",
         font_color="#cbd5e1", title_font_size=13,
         xaxis_tickangle=-35, margin=dict(t=45, b=70),
+        yaxis_title="4hr Window Profit (gp)",
     )
     fig.update_traces(marker_line_width=0)
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.warning("No bulk items found. The 5-min data may be sparse — try refreshing again in a moment.")
+    st.warning("No bulk items found. The 5-min data may be sparse — try refreshing in a moment.")
 
 
 # ── Singular flips ────────────────────────────────────────────────────────────
-st.markdown("<div class='section-label'>Best singular flips — low limit, high spread</div>", unsafe_allow_html=True)
-st.markdown("<div class='note'>GE limit ≤15 · price >500K GP · ranked by post-tax spread · slower fills, fatter margins</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-label'>Best singular flips — low limit, high profit per unit</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='note'>"
+    "GE limit ≤15 · price >500K GP · ranked by post-tax profit per unit · "
+    "slow fills — patience required"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 if singular:
-    df_sing = pd.DataFrame([{
-        "Item":        r["name"],
-        "Buy":         r["buy"],
-        "Sell":        r["sell"],
-        "Spread":      r["margin"],
-        "ROI %":       round(r["roi"], 2),
-        "Limit":       r["limit"],
-        "Trades / hr": r["vol_per_hour"],
-        "Tax Cap":     "✓" if r["tax_cap"] else "",
-    } for r in singular])
-
+    df_sing = build_table(singular, mode="singular")
     st.dataframe(
-        df_sing.style.format({
-            "Buy":         "{:,.0f}",
-            "Sell":        "{:,.0f}",
-            "Spread":      "{:,.0f}",
-            "ROI %":       "{:.2f}",
-            "Trades / hr": "{:,.0f}",
-        }),
+        df_sing.style.format({k: v for k, v in INT_FMT.items() if k in df_sing.columns}),
         use_container_width=True,
         hide_index=True,
     )
@@ -244,42 +290,32 @@ else:
 
 # ── Watchlist ─────────────────────────────────────────────────────────────────
 st.markdown("<div class='section-label'>Investment watchlist — live snapshot</div>", unsafe_allow_html=True)
-st.markdown("<div class='note'>Tumeken's Shadow · Twisted Bow · Torva · Bandos · Armadyl · Scythe · Soulreaper Axe</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='note'>"
+    "Tumeken's Shadow · Twisted Bow · Torva · Bandos · Armadyl · Scythe · Soulreaper Axe"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 if watch:
-    df_watch = pd.DataFrame([{
-        "Item":        r["name"],
-        "Price":       r["sell"],
-        "Buy offer":   r["buy"],
-        "Spread":      r["margin"],
-        "ROI %":       round(r["roi"], 2),
-        "GE Limit":    r["limit"],
-        "Trades / hr": r["vol_per_hour"],
-        "Tax Cap":     "✓" if r["tax_cap"] else "",
-    } for r in watch])
-
+    df_watch = build_table(watch, mode="watch")
     st.dataframe(
-        df_watch.style.format({
-            "Price":       "{:,.0f}",
-            "Buy offer":   "{:,.0f}",
-            "Spread":      "{:,.0f}",
-            "ROI %":       "{:.2f}",
-            "Trades / hr": "{:,.0f}",
-        }),
+        df_watch.style.format({k: v for k, v in INT_FMT.items() if k in df_watch.columns}),
         use_container_width=True,
         hide_index=True,
     )
 
     fig_w = px.bar(
-        df_watch, x="Item", y="Spread",
+        df_watch, x="Item", y="Profit / unit",
         color="ROI %", color_continuous_scale="oranges",
-        title="Watchlist — post-tax spread per item",
+        title="Watchlist — post-tax profit per unit",
         template="plotly_dark",
     )
     fig_w.update_layout(
         plot_bgcolor="#0f172a", paper_bgcolor="#0f172a",
         font_color="#cbd5e1", title_font_size=13,
         xaxis_tickangle=-30, margin=dict(t=45, b=80),
+        yaxis_title="Profit / unit (gp)",
     )
     fig_w.update_traces(marker_line_width=0)
     st.plotly_chart(fig_w, use_container_width=True)
@@ -291,8 +327,9 @@ else:
 st.markdown("---")
 st.markdown(
     "<div style='font-size:0.7rem;color:#334155;text-align:center'>"
-    "OSRS Wiki Real-Time Prices API · 2% GE tax (5M cap) · "
-    "Trades/hr = 5-min bucket × 12 · Fills not guaranteed"
+    "OSRS Wiki Real-Time Prices API · 2% GE tax (5M GP cap) · "
+    "Trades/hr = 5-min bucket × 12 · 4hr window = min(GE limit, affordable, fills in 4hrs) · "
+    "Fills not guaranteed"
     "</div>",
     unsafe_allow_html=True
 )
