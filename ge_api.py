@@ -5,11 +5,39 @@ HEADERS  = {"User-Agent": "OsrsFlipDashboard/Owen"}
 TAX_RATE = 0.02
 TAX_CAP  = 5_000_000
 
-WATCHLIST_NAMES = [
-    "Tumeken's shadow", "Twisted bow", "Torva platebody", "Torva platelegs",
-    "Bandos chestplate", "Bandos tassets", "Armadyl chestplate",
-    "Armadyl chainskirt", "Scythe of vitur", "Soulreaper axe",
+# ── Watchlist — always-on anchors + update-driven catalyst items ──────────────
+# Catalyst column explains WHY each item is on the watchlist.
+WATCHLIST = [
+    # (item name,                       catalyst note)
+    ("Twisted bow",           "CoX BIS — permanently scarce; ranged PvM always relevant"),
+    ("Scythe of vitur",       "ToB BIS — BiS melee for slayer/raids; supply drains via charges"),
+    ("Tumeken's shadow",      "ToA BIS mage — meta-defining; no confirmed replacement"),
+    ("Soulreaper axe",        "Blood Moon drop; Raids 4 hype driving melee interest"),
+    ("Osmumten's fang",       "ToA — stab BIS; supply pressure from active ToA meta"),
+    ("Harmonised orb",        "CoX — mage BIS for NM/PvM; Summer Sweep-Up CoX changes = supply shift"),
+    ("Volatile orb",          "CoX — high-value unique; affected by CoX prayer scroll reweight (Summer 2026)"),
+    ("Eldritch orb",          "CoX — affected by CoX prayer scroll reweight; supply dynamics shifting"),
+    ("Dexterous prayer scroll","CoX — prayer scroll reweight in Summer 2026 could push Dex up if arcane/dex rate cut"),
+    ("Arcane prayer scroll",  "CoX — Summer 2026 CM Cox reweight: 58% drop rate controversy; watch for rate change"),
+    ("Enhanced crystal weapon seed","Corrupted Gauntlet — Summer Sweep-Up stackable resources buff = faster CG = more supply"),
+    ("Ghrazi rapier",         "ToB — Sang/Rapier buffed in Summer Sweep-Up 2026; +17.98% in May 2026"),
+    ("Sanguinesti staff (uncharged)","ToB — buffed in Summer Sweep-Up; +6% in May; rising interest"),
+    ("Avernic defender hilt", "ToB — always tied to ToB meta; Raids 4 player resurgence likely"),
+    ("Necklace of anguish",   "Ranged BiS neck — Necklace of Pursuit (Blood Moon, Jun 30 2026) replaces it; SELL signal"),
+    ("Masori body (f)",       "ToA range BiS — Raids 4 new range gear may displace; watch for replacement"),
+    ("Masori chaps (f)",      "ToA range BiS — same Raids 4 range gear displacement risk as body"),
+    ("Torva platebody",       "Nex melee BIS — Raids 4 may introduce melee upgrade; pre-raid hold"),
+    ("Torva platelegs",       "Nex melee BIS — same Raids 4 melee thesis as platebody"),
+    ("Bandos chestplate",     "Mid-tier melee — Raids 4 new players returning will gear up through Bandos tier"),
+    ("Bandos tassets",        "Mid-tier melee — same returning player thesis as chestplate"),
+    ("Armadyl chestplate",    "Mid-tier range — new players gearing for ToA/CoX; demand baseline"),
+    ("Armadyl chainskirt",    "Mid-tier range — same thesis as chestplate"),
+    ("3rd age platebody",     "Store-of-value / status flex; fixed supply, grows with playerbase wealth"),
 ]
+
+WATCHLIST_NAMES     = [w[0] for w in WATCHLIST]
+WATCHLIST_CATALYSTS = {w[0]: w[1] for w in WATCHLIST}
+
 
 def _get(path, timeout=14):
     r = requests.get(f"{BASE}{path}", headers=HEADERS, timeout=timeout)
@@ -82,8 +110,8 @@ def build_rows(latest, mapping, hour_vols, fmin_vols):
             continue
         roi = (profit_unit / buy_price) * 100
         buy_qty_hr, sell_qty_hr = _vols(hour_vols.get(id_str), fmin_vols.get(id_str))
-        total_hr = buy_qty_hr + sell_qty_hr
-        ratio = round(buy_qty_hr / sell_qty_hr, 2) if sell_qty_hr > 0 else None
+        total_hr    = buy_qty_hr + sell_qty_hr
+        ratio       = round(buy_qty_hr / sell_qty_hr, 2) if sell_qty_hr > 0 else None
         fq_mult, fq_label = fill_quality(ratio)
         potential_profit = profit_unit * ge_limit
         adj_potential    = potential_profit * fq_mult
