@@ -192,11 +192,13 @@ def enrich_watchlist_with_trends(watch_rows):
     return enriched
 
 def is_viable_bulk(r):
-    buy_hr  = r.get("buy_qty_hr", 0) or 0
-    sell_hr = r.get("sell_qty_hr", 0) or 0
-    ratio   = r.get("ratio")
-    ge      = r.get("ge_limit", 0) or 0
-    profit  = r.get("profit_unit", 0) or 0
+    buy_hr    = r.get("buy_qty_hr", 0) or 0
+    sell_hr   = r.get("sell_qty_hr", 0) or 0
+    ratio     = r.get("ratio")
+    ge        = r.get("ge_limit", 0) or 0
+    profit    = r.get("profit_unit", 0) or 0
+    realistic = r.get("realistic_profit", 0) or 0
+    buy_price = r.get("buy_price", 0) or 0
 
     # Needs actual two-sided market activity.
     if buy_hr < 100 or sell_hr < 50:
@@ -210,8 +212,12 @@ def is_viable_bulk(r):
     if min(ge, sell_hr * 4) < max(100, ge * 0.05):
         return False
 
-    # Avoid ultra-thin high-spread nonsense.
-    if profit <= 0:
+    # Avoid ultra-thin or trivial-value items even if percentage ROI looks huge.
+    if profit < 100:
+        return False
+    if realistic < 100_000:
+        return False
+    if buy_price < 500:
         return False
 
     return True

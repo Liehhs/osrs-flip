@@ -171,10 +171,22 @@ COL_DEFS = {
 }
 
 def to_df(rows, col_keys):
-    records = [
-        {COL_DEFS[k][0]: COL_DEFS[k][1](r) for k in col_keys}
-        for r in rows
-    ]
+    records = []
+    for r in rows:
+        row = {}
+        for k in col_keys:
+            label = COL_DEFS[k][0]
+            if k in {"buy_price","sell_price","tax","profit_unit","buy_qty_hr","sell_qty_hr","daily_volume","ge_limit","potential_profit","adj_potential","realistic_profit","roi","chg_1d","chg_7d","chg_30d"}:
+                row[label] = r.get(k)
+            elif k == "ratio":
+                row[label] = r.get("ratio")
+            elif k == "fq_label":
+                row[label] = fq_fmt(r.get("fq_label","No data"))
+            elif k == "trend":
+                row[label] = r.get("trend","Flat")
+            else:
+                row[label] = r.get(k, COL_DEFS[k][1](r))
+        records.append(row)
     return pd.DataFrame(records)
 
 # ── Row styler (axis=1) ────────────────────────────────────────────────────────
@@ -269,6 +281,27 @@ def recompute():
         st.session_state.get("fmin_vols", {}),
     )
 
+
+
+def base_column_config():
+    return {
+        "Buy": st.column_config.NumberColumn("Buy", format="%d"),
+        "Sell": st.column_config.NumberColumn("Sell", format="%d"),
+        "Tax": st.column_config.NumberColumn("Tax", format="%d"),
+        "Profit/item": st.column_config.NumberColumn("Profit/item", format="%d"),
+        "ROI %": st.column_config.NumberColumn("ROI %", format="%.1f%%"),
+        "Buy/hr": st.column_config.NumberColumn("Buy/hr", format="%d"),
+        "Sell/hr": st.column_config.NumberColumn("Sell/hr", format="%d"),
+        "Daily Vol": st.column_config.NumberColumn("Daily Vol", format="%d"),
+        "B/S": st.column_config.NumberColumn("B/S", format="%.2f"),
+        "GE Lmt": st.column_config.NumberColumn("GE Lmt", format="%d"),
+        "Pot. Profit": st.column_config.NumberColumn("Pot. Profit", format="%d"),
+        "Adj. Potential": st.column_config.NumberColumn("Adj. Potential", format="%d"),
+        "Realistic 4hr": st.column_config.NumberColumn("Realistic 4hr", format="%d"),
+        "1D %": st.column_config.NumberColumn("1D %", format="%+.1f%%"),
+        "7D %": st.column_config.NumberColumn("7D %", format="%+.1f%%"),
+        "30D %": st.column_config.NumberColumn("30D %", format="%+.1f%%"),
+    }
 # ── Header ────────────────────────────────────────────────────────────────────
 h1, h2, h3 = st.columns([4, 3, 1])
 with h1:
@@ -331,7 +364,7 @@ with t_sing:
                  "buy_qty_hr","sell_qty_hr","ratio","fq_label","ge_limit","potential_profit"]
     df_s = to_df(display_sing, SING_COLS)
     st.dataframe(make_styler(df_s, display_sing, SING_COLS),
-                 use_container_width=True, hide_index=True, height=520)
+                 use_container_width=True, hide_index=True, height=520, column_config=base_column_config())
 
     st.markdown("<div class='section-label'>Profit per unit</div>", unsafe_allow_html=True)
     if display_sing:
@@ -363,9 +396,9 @@ with t_bulk:
                  "buy_qty_hr","sell_qty_hr","roi","realistic_profit"]
     df_b = to_df(display_bulk, BULK_COLS)
     st.dataframe(make_styler(df_b, display_bulk, BULK_COLS),
-                 use_container_width=True, hide_index=True, height=560)
+                 use_container_width=True, hide_index=True, height=560, column_config=base_column_config())
 
-    st.caption("Bulk tab only includes items with two-sided hourly liquidity, sane B/S, and enough sell-side activity to realistically move size inside the 4-hour GE window.")
+    st.caption("Bulk tab only includes items with real two-sided liquidity, sane B/S, enough sell-side activity to move size in 4 hours, and a minimum practical profit floor so trivial flips do not clutter the list.")
 
     st.markdown("<div class='section-label'>Best bulk candidates — ranked by profit/item first, then fill quality</div>", unsafe_allow_html=True)
     if display_bulk:
@@ -417,7 +450,7 @@ with t_roi:
                 "daily_volume","ratio","fq_label","ge_limit","potential_profit"]
     df_r = to_df(display_roi, ROI_COLS)
     st.dataframe(make_styler(df_r, display_roi, ROI_COLS),
-                 use_container_width=True, hide_index=True, height=500)
+                 use_container_width=True, hide_index=True, height=500, column_config=base_column_config())
 
     st.markdown("<div class='section-label'>ROI % vs daily volume</div>", unsafe_allow_html=True)
     if high_roi:
@@ -524,13 +557,13 @@ with t_watch:
         st.dataframe(
             df_w_full.style.apply(style_watch, axis=1),
             use_container_width=True, hide_index=True, height=620,
-            column_config={
+            column_config={**base_column_config(),
                 "Catalyst": st.column_config.TextColumn("Catalyst", width="large"),
                 "Item": st.column_config.TextColumn("Item", width="medium"),
                 "Trend": st.column_config.TextColumn("Trend", width="small"),
-                "1D %": st.column_config.TextColumn("1D %", width="small"),
-                "7D %": st.column_config.TextColumn("7D %", width="small"),
-                "30D %": st.column_config.TextColumn("30D %", width="small"),
+                "1D %": st.column_config.NumberColumn("1D %", format="%+.1f%%", width="small"),
+                "7D %": st.column_config.NumberColumn("7D %", format="%+.1f%%", width="small"),
+                "30D %": st.column_config.NumberColumn("30D %", format="%+.1f%%", width="small"),
             },
         )
 
@@ -621,7 +654,7 @@ with t_guide:
 | GE Lmt | Buy limit per 4-hour window |
 | Pot. Profit | Profit/unit × full GE limit |
 | Adj. Potential | Pot. Profit × fill quality multiplier |
-| Realistic 4hr | Profit × min(GE limit, sell-side fills × 4); bulk tab also excludes thin or one-sided markets |
+| Realistic 4hr | Profit × min(GE limit, sell-side fills × 4); bulk tab also excludes thin, one-sided, and too-small-to-matter markets |
         """)
 
         st.markdown("### B/S Ratio")
