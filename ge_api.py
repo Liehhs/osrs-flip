@@ -5,50 +5,54 @@ HEADERS = {"User-Agent": "OsrsFlipDashboard/Owen"}
 TAX_RATE = 0.02
 TAX_CAP = 5_000_000
 
+# Investment Watchlist: stable long-term holdings to monitor for price trends.
+# These are ALWAYS shown regardless of activity level -- never filtered out.
 WATCHLIST = [
-    ("Twisted bow", "CoX BIS â€” permanently scarce; ranged PvM always relevant"),
-    ("Scythe of vitur", "ToB BIS â€” BiS melee for slayer/raids; supply drains via charges"),
-    ("Tumeken's shadow", "ToA BIS mage â€” meta-defining; no confirmed replacement"),
-    ("Soulreaper axe", "Blood Moon drop; Raids 4 hype driving melee interest"),
-    ("Osmumten's fang", "ToA â€” stab BIS; supply pressure from active ToA meta"),
-    ("Harmonised orb", "CoX â€” mage BIS for NM/PvM; CoX changes can shift supply/demand"),
-    ("Volatile orb", "CoX â€” high-value unique; affected by CoX prayer scroll reweight"),
-    ("Eldritch orb", "CoX â€” affected by CoX prayer scroll reweight; supply dynamics shifting"),
-    ("Dexterous prayer scroll", "CoX â€” prayer scroll reweight could shift value"),
-    ("Arcane prayer scroll", "CoX â€” prayer scroll rate controversy; watch for rebalance"),
-    ("Enhanced crystal weapon seed", "Corrupted Gauntlet â€” supply changes affect Bowfa ecosystem"),
-    ("Ghrazi rapier", "ToB â€” buff/update-sensitive melee unique"),
-    ("Sanguinesti staff (uncharged)", "ToB â€” buff/update-sensitive mage unique"),
-    ("Avernic defender hilt", "ToB â€” tied to ToB/raids participation"),
-    ("Necklace of anguish", "Ranged neck slot pressure from new gear / replacement risk"),
-    ("Masori body (f)", "ToA range BIS â€” future range gear may displace it"),
-    ("Masori chaps (f)", "ToA range BIS â€” same displacement risk as body"),
-    ("Torva platebody", "Nex melee BIS â€” raid melee hype proxy"),
-    ("Torva platelegs", "Nex melee BIS â€” raid melee hype proxy"),
-    ("Bandos chestplate", "Mid-tier melee returning-player demand proxy"),
-    ("Bandos tassets", "Mid-tier melee returning-player demand proxy"),
-    ("Armadyl chestplate", "Mid-tier range baseline demand proxy"),
-    ("Armadyl chainskirt", "Mid-tier range baseline demand proxy"),
-    ("3rd age platebody", "Store-of-value / status flex; fixed supply"),
+    ("Twisted bow",                  "CoX BIS -- permanently scarce; ranged PvM always relevant"),
+    ("Scythe of vitur",              "ToB BIS -- BiS melee for slayer/raids; supply drains via charges"),
+    ("Tumeken's shadow",             "ToA BIS mage -- meta-defining; no confirmed replacement"),
+    ("Soulreaper axe",               "Blood Moon drop; Raids 4 hype driving melee interest"),
+    ("Osmumten's fang",              "ToA -- stab BIS; supply pressure from active ToA meta"),
+    ("Harmonised orb",               "CoX -- mage BIS for NM/PvM; CoX changes can shift supply/demand"),
+    ("Volatile orb",                 "CoX -- high-value unique; affected by CoX prayer scroll reweight"),
+    ("Eldritch orb",                 "CoX -- affected by CoX prayer scroll reweight; supply dynamics shifting"),
+    ("Dexterous prayer scroll",      "CoX -- prayer scroll reweight could shift value"),
+    ("Arcane prayer scroll",         "CoX -- prayer scroll rate controversy; watch for rebalance"),
+    ("Enhanced crystal weapon seed", "Corrupted Gauntlet -- supply changes affect Bowfa ecosystem"),
+    ("Ghrazi rapier",                "ToB -- buff/update-sensitive melee unique"),
+    ("Sanguinesti staff (uncharged)","ToB -- buff/update-sensitive mage unique"),
+    ("Avernic defender hilt",        "ToB -- tied to ToB/raids participation"),
+    ("Necklace of anguish",          "Ranged neck slot -- new gear displacement risk"),
+    ("Masori body (f)",              "ToA range BIS -- future range gear may displace it"),
+    ("Masori chaps (f)",             "ToA range BIS -- same displacement risk as body"),
+    ("Torva platebody",              "Nex melee BIS -- raid melee hype proxy"),
+    ("Torva platelegs",              "Nex melee BIS -- raid melee hype proxy"),
+    ("Bandos chestplate",            "Mid-tier melee -- returning-player demand proxy"),
+    ("Bandos tassets",               "Mid-tier melee -- returning-player demand proxy"),
+    ("Armadyl chestplate",           "Mid-tier range -- baseline demand proxy"),
+    ("Armadyl chainskirt",           "Mid-tier range -- baseline demand proxy"),
+    ("3rd age platebody",            "Store-of-value / status flex; fixed supply"),
 ]
 
 WATCHLIST_NAMES = [w[0] for w in WATCHLIST]
 WATCHLIST_CATALYSTS = {w[0]: w[1] for w in WATCHLIST}
 
-DISCOVERY_UNIVERSE = {
-    "Zaryte crossbow": "High-end ranged utility; reacts to range meta shifts",
-    "Dragon hunter lance": "Boss-specific melee demand proxy",
-    "Dragon hunter crossbow": "Boss-specific ranged demand proxy",
-    "Ancestral robe top": "Mage gear demand proxy",
-    "Ancestral robe bottom": "Mage gear demand proxy",
-    "Virtus robe top": "Mage hybrid demand proxy",
-    "Virtus robe bottom": "Mage hybrid demand proxy",
-    "Torva full helm": "Top-end melee demand proxy",
-    "Justiciar faceguard": "Tank/melee demand proxy",
-    "Elysian spirit shield": "Defensive prestige item / slow-moving high-value unique",
-    "Zaryte vambraces": "Endgame ranged accessory proxy",
-    "Inquisitor's mace": "Crush meta / boss demand proxy",
-    "Inquisitor's hauberk": "Crush gear set demand proxy",
+# Signals universe: items that react to meta shifts, hype, game updates, dev blogs.
+# These are ALWAYS shown in the Signals tab regardless of priority score.
+SIGNALS_UNIVERSE = {
+    "Zaryte crossbow":         "High-end ranged utility; reacts to range meta shifts",
+    "Dragon hunter lance":     "Boss-specific melee demand proxy",
+    "Dragon hunter crossbow":  "Boss-specific ranged demand proxy",
+    "Ancestral robe top":      "Mage gear demand proxy",
+    "Ancestral robe bottom":   "Mage gear demand proxy",
+    "Virtus robe top":         "Mage hybrid demand proxy",
+    "Virtus robe bottom":      "Mage hybrid demand proxy",
+    "Torva full helm":         "Top-end melee demand proxy",
+    "Justiciar faceguard":     "Tank/melee demand proxy",
+    "Elysian spirit shield":   "Defensive prestige item / slow-moving high-value unique",
+    "Zaryte vambraces":        "Endgame ranged accessory proxy",
+    "Inquisitor's mace":       "Crush meta / boss demand proxy",
+    "Inquisitor's hauberk":    "Crush gear set demand proxy",
     "Inquisitor's plateskirt": "Crush gear set demand proxy",
 }
 
@@ -289,10 +293,12 @@ def compute_flips(latest, mapping, hour_vols, fmin_vols):
         [r for r in rows if r["ge_limit"] >= 1000 and r["total_hr"] >= 200 and is_viable_bulk(r)],
         key=lambda x: (-x["profit_unit"], -x["fq_mult"], -x["ge_limit"], -x["roi"]),
     )[:60]
+
     singular = sorted(
         [r for r in rows if r["ge_limit"] <= 15 and r["sell_price"] >= 500_000 and r["total_hr"] >= 1],
         key=lambda x: -(x["profit_unit"] * x["fq_mult"]),
     )[:40]
+
     high_roi = sorted(
         [r for r in rows if r["total_hr"] >= 50 and r["roi"] >= 5],
         key=lambda x: -x["roi"],
@@ -300,23 +306,33 @@ def compute_flips(latest, mapping, hour_vols, fmin_vols):
 
     all_by_name = {r["name"].lower(): r for r in rows}
 
-    watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
-    watch = enrich_with_trends(watch)
-    watch = sorted(watch, key=lambda r: (-r.get("priority", 0), -r.get("profit_unit", 0), r["name"]))
+    # Watchlist: always include all items from WATCHLIST_NAMES that exist in market data
+    watch_raw = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
+    watch = enrich_with_trends(watch_raw)
+    # Sort: items with active movement (Building/Weakening/Pullback/Extended) first,
+    # then Flat, then by absolute price movement
+    trend_order = {"Extended": 0, "Building": 1, "Pullback": 2, "Weakening": 3, "Flat": 4}
+    watch = sorted(watch, key=lambda r: (
+        trend_order.get(r.get("trend", "Flat"), 5),
+        -abs(r.get("chg_7d") or 0),
+        -r.get("profit_unit", 0),
+    ))
 
-    watch_names = {w["name"].lower() for w in watch}
-    candidates = [
+    # Signals: always include all items from SIGNALS_UNIVERSE that exist in market data
+    watch_name_set = {w["name"].lower() for w in watch}
+    signals_raw = [
         all_by_name[n.lower()]
-        for n in DISCOVERY_UNIVERSE
-        if n.lower() in all_by_name and n.lower() not in watch_names
+        for n in SIGNALS_UNIVERSE
+        if n.lower() in all_by_name
     ]
-    candidates = enrich_with_trends(candidates)
-    for c in candidates:
-        c["candidate_reason"] = DISCOVERY_UNIVERSE.get(c["name"], "")
-    candidates = [c for c in candidates if c.get("priority", 0) >= 3]
-    candidates = sorted(
-        candidates,
-        key=lambda r: (-r.get("priority", 0), -abs(r.get("chg_1d") or 0), -abs(r.get("chg_7d") or 0), -r.get("profit_unit", 0)),
-    )[:12]
+    signals = enrich_with_trends(signals_raw)
+    for s in signals:
+        s["signal_context"] = SIGNALS_UNIVERSE.get(s["name"], "")
+    # Sort by most active movement first
+    signals = sorted(signals, key=lambda r: (
+        trend_order.get(r.get("trend", "Flat"), 5),
+        -abs(r.get("chg_7d") or 0),
+        -r.get("profit_unit", 0),
+    ))
 
-    return bulk, singular, high_roi, watch, candidates, rows
+    return bulk, singular, high_roi, watch, signals, rows
