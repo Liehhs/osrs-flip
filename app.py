@@ -461,10 +461,20 @@ def render_shifts_section(section_title, ht_rows, bulk_rows,
 
 
 # -- Watchlist renderer -------------------------------------------------------
-RAID_CATS  = {"CoX", "ToB", "ToA", "Nightmare", "Raids/FA"}
-BOSS_CATS  = {"Nex", "DT2", "GWD", "Zulrah", "Cerberus", "Dagannoth",
-              "Varlamore", "Specialist", "Accessories"}
-CLUE_CATS  = {"Clue"}
+RAID_CATS  = {
+    "Chambers of Xeric", "Theatre of Blood", "Tombs of Amascut",
+    "The Nightmare", "Corrupted Gauntlet",
+}
+BOSS_CATS  = {
+    "Nex", "Vardorvis", "Duke Sucellus", "The Whisperer", "The Leviathan",
+    "General Graardor", "Kree'arra", "Commander Zilyana", "K'ril Tsutsaroth",
+    "Zulrah", "Vorkath", "Cerberus", "Kalphite Queen", "King Black Dragon",
+    "Dagannoth Rex", "Dagannoth Prime", "Abyssal Sire", "Kraken",
+    "Thermonuclear Smoke Devil", "Grotesque Guardians", "Alchemical Hydra",
+    "Phantom Muspah", "Doom of Mokhaiotl", "Blood Moon", "Blue Moon",
+    "Eclipse Moon", "Sarachnis", "Skotizo", "Corporeal Beast",
+}
+CLUE_CATS  = {"Treasure Trails"}
 MIN_PRICE      = 1_000_000  # 1M floor for boss/raid
 CLUE_MIN_PRICE = 500_000    # 500K floor for clue items
 
@@ -602,7 +612,6 @@ SIG_TYPE_CSS = {
     "price risk":     "sig-supply-shock",
 }
 
-# Type label display mapping -- human-readable
 SIG_TYPE_DISPLAY = {
     "game update":    "Game Update",
     "meta shift":     "Meta Shift",
@@ -615,59 +624,84 @@ SIG_TYPE_DISPLAY = {
     "price risk":     "Price Risk",
 }
 
+MARKET_OVERVIEW = """
+**Current Signals (June 2026)**
+
+The OSRS economy is experiencing a rare convergence of three simultaneous live catalysts pulling the market in distinct directions.
+
+**Summer Sweep-Up (LIVE):** The biggest combat rebalance in years. Soulreaper axe now stacks to 5, +50% accuracy, 12.5% def drain per hit -- genuine BiS melee. This lifts Torva, Ultor ring, and the melee ecosystem. Ghrazi rapier gained +4 strength (guaranteed extra max hit). Sanguinesti staff got a 6% DPS buff with halved charge cost, making ToB more attractive to complete. Inquisitor set bonus was *removed* -- mace is stronger standalone but full set is weaker, creating sell pressure on hauberk/plateskirt.
+
+**Blood Moon Rises (June 30):** Necklace of Rupture (new BIS range neck) directly displaces Necklace of Anguish. Expect Anguish to decline 20-35% post-launch. Broader range meta (Masori, Zaryte crossbow) may benefit as range DPS becomes more accessible.
+
+**Raids 4 / Fractured Archive (Autumn 2026):** Community accumulation is quietly tightening the top-tier market. Twisted bow, Tumeken's shadow, and Scythe of vitur show unusually low sell volume -- consistent with long-term holders not selling. This supply squeeze typically precedes a sharp price move as raid release hype peaks.
+
+**3-Month Outlook (Sep 2026):** Soulreaper axe likely settles 15-25% above current. Necklace of Anguish drops 20-30%. Inquisitor body/legs continue softening. Ghrazi rapier and Sang staff see modest sustained gains from ToB activity lift. Twisted bow and Shadow grind upward on Raids 4 accumulation.
+
+**6-Month Outlook (Dec 2026):** If Raids 4 launches on schedule, expect a sharp spike 4-6 weeks pre-launch across Tbow, Shadow, Scythe. Post-launch supply shock follows 4-8 weeks later. Prestige fixed-supply items (Elysian, 3rd age) may rally in the high-ticket enthusiasm surrounding a major raid launch. Inquisitor set finds a floor once the mace-only meta stabilises.
+"""
+
+TYPE_BG = {
+    "game update":    ("background:#1c1000", "color:#fb923c"),
+    "meta shift":     ("background:#0c1a2e", "color:#38bdf8"),
+    "boss demand":    ("background:#1a1200", "color:#fde68a"),
+    "supply shock":   ("background:#2d0a0a", "color:#f87171"),
+    "price risk":     ("background:#2d0a0a", "color:#f87171"),
+    "community hype": ("background:#1a0c2e", "color:#c084fc"),
+    "pvp meta":       ("background:#2d1a0a", "color:#fdba74"),
+    "new content":    ("background:#052e16", "color:#4ade80"),
+    "raids prep":     ("background:#052e16", "color:#4ade80"),
+}
+
 def render_signals_legend():
     st.markdown("""
 <div class='legend-box'>
-  <div class='legend-item'>
-    <span class='legend-badge' style='background:#1c1000;color:#fb923c;'>Game Update</span>
-    <span class='legend-desc'>Item directly affected by a patch, buff, or nerf</span>
+  <div class='legend-title'>Signal Type</div>
+  <div class='legend-row'>
+    <div class='legend-item'>
+      <span class='legend-badge' style='background:#1c1000;color:#fb923c;'>Game Update</span>
+      <span class='legend-desc'>Directly affected by a patch, buff, or nerf</span>
+    </div>
+    <div class='legend-item'>
+      <span class='legend-badge' style='background:#0c1a2e;color:#38bdf8;'>Meta Shift</span>
+      <span class='legend-desc'>Reacting to how players build or fight</span>
+    </div>
+    <div class='legend-item'>
+      <span class='legend-badge' style='background:#1a1200;color:#fde68a;'>Boss Demand</span>
+      <span class='legend-desc'>Tied to boss popularity or activity shifts</span>
+    </div>
+    <div class='legend-item'>
+      <span class='legend-badge' style='background:#2d0a0a;color:#f87171;'>Supply/Risk</span>
+      <span class='legend-desc'>Fixed supply, tightening, or downside price risk</span>
+    </div>
+    <div class='legend-item'>
+      <span class='legend-badge' style='background:#052e16;color:#4ade80;'>Raids Prep</span>
+      <span class='legend-desc'>Demand rising as players gear for upcoming raid</span>
+    </div>
+    <div class='legend-item'>
+      <span class='legend-badge' style='background:#2d1a0a;color:#fdba74;'>PvP Meta</span>
+      <span class='legend-desc'>Reacting to PvP tournament or wilderness meta</span>
+    </div>
+    <div class='legend-item'>
+      <span class='legend-badge' style='background:#1a0c2e;color:#c084fc;'>Community</span>
+      <span class='legend-desc'>Streamer or community hype driving demand</span>
+    </div>
   </div>
-  <div class='legend-item'>
-    <span class='legend-badge' style='background:#0c1a2e;color:#38bdf8;'>Meta Shift</span>
-    <span class='legend-desc'>Item reacting to a change in how players are building or fighting</span>
-  </div>
-  <div class='legend-item'>
-    <span class='legend-badge' style='background:#1a1200;color:#fde68a;'>Boss Demand</span>
-    <span class='legend-desc'>Item tied to boss popularity or activity shifts</span>
-  </div>
-  <div class='legend-item'>
-    <span class='legend-badge' style='background:#2d0a0a;color:#f87171;'>Supply/Risk</span>
-    <span class='legend-desc'>Fixed or tightening supply, or a downside risk to current price</span>
-  </div>
-  <div class='legend-item'>
-    <span class='legend-badge' style='background:#052e16;color:#4ade80;'>Raids Prep</span>
-    <span class='legend-desc'>Demand rising as players gear up for an upcoming raid</span>
-  </div>
-  <div class='legend-item'>
-    <span class='legend-badge' style='background:#2d1a0a;color:#fdba74;'>PvP Meta</span>
-    <span class='legend-desc'>Item reacting to PvP tournament, tournament, or wilderness meta</span>
-  </div>
-  <div class='legend-item'>
-    <span class='legend-badge' style='background:#1a0c2e;color:#c084fc;'>Community</span>
-    <span class='legend-desc'>Streamer, Reddit, or community hype driving demand</span>
-  </div>
-  <div style='margin-top:6px; width:100%; border-top:1px solid #334155; padding-top:8px;'>
-    <span style='font-size:.72rem; font-weight:700; color:#64748b; margin-right:10px;'>STATUS:</span>
-    <span class='legend-badge' style='background:#2d0a0a;color:#f87171;'>ACTIVE</span>
-    <span class='legend-desc' style='margin-right:12px;'>Live catalyst now</span>
+  <div style='margin-top:8px;border-top:1px solid #334155;padding-top:8px;'>
+    <span style='font-size:.72rem;font-weight:700;color:#64748b;margin-right:8px;'>STATUS:</span>
+    <span class='legend-badge' style='background:#052e16;color:#4ade80;'>ACTIVE</span>
+    <span class='legend-desc' style='margin-right:12px;'>Live catalyst happening now</span>
     <span class='legend-badge' style='background:#1c1a00;color:#facc15;'>WATCH</span>
-    <span class='legend-desc' style='margin-right:12px;'>Upcoming or uncertain</span>
+    <span class='legend-desc' style='margin-right:12px;'>Upcoming or monitor-only</span>
     <span class='legend-badge' style='background:#1e293b;color:#94a3b8;border:1px solid #334155;'>COOLING</span>
-    <span class='legend-desc'>Catalyst fading -- monitor only</span>
+    <span class='legend-desc'>Catalyst fading</span>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
-def render_signals(signals):
-    if not signals:
-        st.info("No signals data.")
-        return
-
-    render_signals_legend()
-
+def _build_signal_records(signals):
     records = []
     for r in signals:
-        raw = r.get("signal_context", "")
+        raw   = r.get("signal_context", "")
         parts = [p.strip() for p in raw.split("|")]
         raw_type   = parts[0].strip().lower() if len(parts) > 0 else ""
         sig_status = parts[1].strip()         if len(parts) > 1 else ""
@@ -687,7 +721,12 @@ def render_signals(signals):
             "sell_price": r.get("sell_price"),
             "ratio":      r.get("ratio"),
         })
+    return records
 
+def _render_signal_table(records):
+    if not records:
+        st.caption("No items in this category.")
+        return
     df = pd.DataFrame([{
         "Item":    rec["name"],
         "Type":    rec["type"],
@@ -700,22 +739,9 @@ def render_signals(signals):
         "Price":   fmt_gp(rec["sell_price"]),
         "B/S":     ratio_fmt(rec["ratio"]),
     } for rec in records])
-
     cols = list(df.columns)
 
-    TYPE_BG = {
-        "game update":    ("background:#1c1000", "color:#fb923c"),
-        "meta shift":     ("background:#0c1a2e", "color:#38bdf8"),
-        "boss demand":    ("background:#1a1200", "color:#fde68a"),
-        "supply shock":   ("background:#2d0a0a", "color:#f87171"),
-        "price risk":     ("background:#2d0a0a", "color:#f87171"),
-        "community hype": ("background:#1a0c2e", "color:#c084fc"),
-        "pvp meta":       ("background:#2d1a0a", "color:#fdba74"),
-        "new content":    ("background:#052e16", "color:#4ade80"),
-        "raids prep":     ("background:#052e16", "color:#4ade80"),
-    }
-
-    def style_signals(row):
+    def style_fn(row):
         idx = row.name
         if idx >= len(records): return [""] * len(cols)
         rec = records[idx]
@@ -733,19 +759,60 @@ def render_signals(signals):
                 result.append(ratio_css(rec["ratio"]))
             elif col == "Status":
                 s = rec["status"].upper()
-                if s == "ACTIVE":    result.append("background:#2d0a0a; color:#f87171; font-weight:700")
+                if s == "ACTIVE":    result.append("background:#052e16; color:#4ade80; font-weight:700")
                 elif s == "WATCH":   result.append("background:#1c1a00; color:#facc15; font-weight:700")
                 elif s == "COOLING": result.append("color:#94a3b8; font-weight:600")
                 else:                result.append("")
             elif col == "Type":
                 bg, fg = TYPE_BG.get(rec["raw_type"], ("", "color:#38bdf8"))
-                result.append(f"{bg}; {fg}; font-weight:600" if bg else f"{fg}")
+                result.append(f"{bg}; {fg}; font-weight:600" if bg else fg)
             else:
                 result.append("")
         return result
 
-    st.dataframe(df.style.apply(style_signals, axis=1),
-                 use_container_width=True, hide_index=True, height=620)
+    height = min(60 + len(records) * 36, 640)
+    st.dataframe(df.style.apply(style_fn, axis=1),
+                 use_container_width=True, hide_index=True, height=height)
+
+# Classify item direction from chg_7d
+def _is_positive(rec):
+    # ACTIVE items with price risk / supply shock / price risk types are negative
+    neg_types = {"supply shock", "price risk"}
+    if rec["raw_type"] in neg_types and rec["status"].upper() == "ACTIVE":
+        return False
+    # Otherwise use 7D price direction if available
+    chg = rec.get("chg_7d")
+    if chg is not None:
+        return chg >= 0
+    # Fall back to status: ACTIVE game updates / meta shifts assumed positive
+    return rec["status"].upper() == "ACTIVE"
+
+def render_signals(signals):
+    if not signals:
+        st.info("No signals data.")
+        return
+
+    # Market overview
+    st.markdown("<div class='section-header'>Market Overview & Predictions</div>",
+                unsafe_allow_html=True)
+    st.markdown(MARKET_OVERVIEW)
+    st.divider()
+
+    render_signals_legend()
+
+    all_records = _build_signal_records(signals)
+    pos_records = [r for r in all_records if _is_positive(r)]
+    neg_records = [r for r in all_records if not _is_positive(r)]
+
+    st.markdown("<div class='section-header'>Positively Affected</div>",
+                unsafe_allow_html=True)
+    st.caption("Items with active tailwinds -- game updates, meta shifts, or demand catalysts driving prices up.")
+    _render_signal_table(pos_records)
+
+    st.markdown("<div class='section-header'>Negatively Affected / At Risk</div>",
+                unsafe_allow_html=True)
+    st.caption("Items facing headwinds -- replacements, set bonus removals, or supply pressure pushing prices down.")
+    _render_signal_table(neg_records)
 
 # -- Session / fetch ----------------------------------------------------------
 def stale(key, interval):
