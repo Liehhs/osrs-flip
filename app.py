@@ -461,25 +461,64 @@ def render_shifts_section(section_title, ht_rows, bulk_rows,
 
 
 # -- Watchlist renderer -------------------------------------------------------
+CLUE_CATS = {"Prestige"}
+
 def render_watchlist(watch):
     if not watch:
         st.info("No watchlist data.")
         return
 
-    categories = {}
-    for r in watch:
-        cat = r.get("category", "Other")
-        categories.setdefault(cat, []).append(r)
+    boss_items = [r for r in watch if r.get("category", "") not in CLUE_CATS]
+    clue_items = [r for r in watch if r.get("category", "") in CLUE_CATS]
 
-    CAT_ORDER = ["CoX","ToB","ToA","Nex","Nightmare","Raids/DT2","GWD","Specialist","Accessories","Prestige","Other"]
-    ordered_cats = sorted(categories.keys(), key=lambda c: CAT_ORDER.index(c) if c in CAT_ORDER else 99)
+    st.markdown("<div class='section-header'>Boss & Raid Uniques</div>", unsafe_allow_html=True)
+    if boss_items:
+        _show_watchlist_table(boss_items)
 
-    for cat in ordered_cats:
-        items = categories[cat]
-        st.markdown(f"<div class='section-header'>{cat}</div>", unsafe_allow_html=True)
-        col_defs = ["name","chg_1d","chg_7d","chg_14d","chg_30d","trend","flags",
-                    "roi","sell_price","buy_price","ratio"]
-        show_table(items, col_defs, height=min(80 + len(items) * 36, 480))
+    st.markdown("<div class='section-header'>High-Ticket Clue Items</div>", unsafe_allow_html=True)
+    st.caption("Ultra-rare clue rewards and high-demand cosmetic drops. Supply is fixed -- price driven entirely by demand.")
+    if clue_items:
+        _show_watchlist_table(clue_items)
+
+def _show_watchlist_table(rows):
+    df = pd.DataFrame([{
+        "Item":   r.get("name", "--"),
+        "Source": r.get("category", "--"),
+        "1D %":   fmt_pct(r.get("chg_1d")),
+        "7D %":   fmt_pct(r.get("chg_7d")),
+        "14D %":  fmt_pct(r.get("chg_14d")),
+        "30D %":  fmt_pct(r.get("chg_30d")),
+        "Trend":  r.get("trend", "Flat"),
+        "Price":  fmt_gp(r.get("sell_price")),
+        "B/S":    ratio_fmt(r.get("ratio")),
+        "Note":   r.get("catalyst", ""),
+    } for r in rows])
+
+    cols = list(df.columns)
+
+    def style_wl(row):
+        idx = row.name
+        if idx >= len(rows): return [""] * len(cols)
+        r = rows[idx]
+        result = []
+        for col in cols:
+            if col in ("1D %", "7D %", "14D %", "30D %"):
+                key = {"1D %": "chg_1d", "7D %": "chg_7d",
+                       "14D %": "chg_14d", "30D %": "chg_30d"}[col]
+                result.append(pct_css(r.get(key)))
+            elif col == "Trend":
+                result.append(trend_css(r.get("trend", "Flat")))
+            elif col == "B/S":
+                result.append(ratio_css(r.get("ratio")))
+            elif col == "Source":
+                result.append("color:#64748b; font-size:.78rem")
+            else:
+                result.append("")
+        return result
+
+    height = min(60 + len(rows) * 36, 620)
+    st.dataframe(df.style.apply(style_wl, axis=1),
+                 use_container_width=True, hide_index=True, height=height)
 
 
 # -- Signals renderer ---------------------------------------------------------
@@ -737,9 +776,11 @@ with tab_shifts:
 
 # -- Watchlist tab ------------------------------------------------------------
 with tab_watch:
+    render_trend_legend()
     st.caption(
-        "Investment-grade items: 5M+ bossing and raids drops, endgame gear and weapons. "
-        "Grouped by content source. Sorted by trend activity -- most active first."
+        "All high-ticket boss uniques, raid drops, and clue rewards. "
+        "Source column shows boss/raid/content origin. "
+        "Note column gives current market context. Sorted by trend activity."
     )
     render_watchlist(watch)
 

@@ -7,102 +7,152 @@ TAX_CAP  = 5_000_000
 
 # Watchlist -- comprehensive 5M+ bossing/raids drops and endgame gear
 WATCHLIST = [
-    # Chambers of Xeric
-    ("Twisted bow",                   "CoX",        "Ranged BIS -- rarest CoX unique; permanently scarce supply"),
-    ("Kodai wand",                    "CoX",        "Mage BIS autocast -- steady demand from mage PvMers"),
-    ("Elder maul",                    "CoX",        "Crush BIS -- ToA drives additional demand"),
-    ("Ancestral robe top",            "CoX",        "Mage BIS armour -- reactive to mage update announcements"),
-    ("Ancestral robe bottom",         "CoX",        "Mage BIS armour -- tied to top demand"),
-    ("Ancestral hat",                 "CoX",        "Mage BIS helm -- completes ancestral set"),
-    ("Dragon claws",                  "CoX",        "Spec weapon -- high PvP + PvM demand; volatile"),
-    ("Dexterous prayer scroll",       "CoX",        "Rigour unlock -- prayer scroll reweight watch"),
-    ("Arcane prayer scroll",          "CoX",        "Augury unlock -- prayer scroll rate controversy"),
-    ("Harmonised orb",                "CoX",        "Mage BIS for NM/PvM -- CoX changes shift supply"),
-    ("Volatile orb",                  "CoX",        "High-value spec weapon orb -- CoX prayer scroll reweight"),
-    ("Eldritch orb",                  "CoX",        "Prayer restore spec orb -- CoX supply dynamics"),
-    # Theatre of Blood
-    ("Scythe of vitur",               "ToB",        "Melee BIS for slayer/raids -- supply drains via charges"),
-    ("Ghrazi rapier",                 "ToB",        "Stab BIS -- buff/update-sensitive melee unique"),
-    ("Sanguinesti staff (uncharged)", "ToB",        "Mage BIS heal-on-hit -- buff/update-sensitive"),
-    ("Avernic defender hilt",         "ToB",        "Defender upgrade -- tied to ToB/raids participation"),
-    ("Justiciar faceguard",           "ToB",        "Tank helm -- reacts to tanking meta discussions"),
-    ("Justiciar chestguard",          "ToB",        "Tank body -- Justiciar set demand proxy"),
-    ("Justiciar legguards",           "ToB",        "Tank legs -- Justiciar set demand proxy"),
-    # Tombs of Amascut
-    ("Tumeken's shadow",              "ToA",        "Mage BIS -- meta-defining; no confirmed replacement"),
-    ("Osmumten's fang",               "ToA",        "Stab BIS -- supply pressure from active ToA meta"),
-    ("Elidinis' ward (f)",            "ToA",        "Mage offhand BIS -- ToA unique, completes mage setup"),
-    ("Masori body (f)",               "ToA",        "Range BIS armour -- future range gear displacement risk"),
-    ("Masori chaps (f)",              "ToA",        "Range BIS legs -- same displacement risk as body"),
-    ("Masori mask (f)",               "ToA",        "Range BIS helm -- completes Masori set"),
-    # Nex
-    ("Torva platebody",               "Nex",        "Melee BIS body -- raid melee hype proxy"),
-    ("Torva platelegs",               "Nex",        "Melee BIS legs -- raid melee hype proxy"),
-    ("Torva full helm",               "Nex",        "Completes Torva set -- melee hype proxy"),
-    ("Zaryte crossbow",               "Nex",        "Range BIS alternative -- reacts to range meta changes"),
-    ("Zaryte vambraces",              "Nex",        "Endgame range gloves -- Nex activity proxy"),
-    # Nightmare / Phosani
-    ("Inquisitor's mace",             "Nightmare",  "Crush BIS -- Nightmare/ToA crush meta proxy"),
-    ("Inquisitor's hauberk",          "Nightmare",  "Inquisitor set demand proxy"),
-    ("Inquisitor's plateskirt",       "Nightmare",  "Inquisitor set demand proxy"),
-    ("Nightmare staff",               "Nightmare",  "Powerful mage staff -- base for unique orbs"),
-    # Raids 4 / DT2
-    ("Soulreaper axe",                "Raids/DT2",  "Melee BIS spec axe -- demand spiking with Raids 4 hype"),
-    ("Virtus robe top",               "Raids/DT2",  "DT2 mage hybrid -- reacts to DT2 meta shifts"),
-    ("Virtus robe bottom",            "Raids/DT2",  "DT2 mage hybrid -- tied to top demand"),
-    ("Bellator ring",                 "Raids/DT2",  "DT2 ring -- melee proxy; watch for ring meta shifts"),
-    ("Venator ring",                  "Raids/DT2",  "DT2 ring -- range proxy; very liquid"),
-    ("Magus ring",                    "Raids/DT2",  "DT2 ring -- mage proxy; tied to shadow demand"),
-    ("Ultor ring",                    "Raids/DT2",  "DT2 ring -- strength proxy; melee set demand"),
-    # GWD
-    ("Bandos chestplate",             "GWD",        "Mid-tier melee body -- returning-player demand proxy"),
-    ("Bandos tassets",                "GWD",        "Mid-tier melee legs -- returning-player demand proxy"),
-    ("Armadyl chestplate",            "GWD",        "Mid-tier range body -- baseline demand proxy"),
-    ("Armadyl chainskirt",            "GWD",        "Mid-tier range legs -- baseline demand proxy"),
-    ("Armadyl helmet",                "GWD",        "Mid-tier range helm -- completes Armadyl set"),
-    # Specialist weapons
-    ("Dragon hunter lance",           "Specialist", "KBD/Vorkath proxy -- spikes on boss hype"),
-    ("Dragon hunter crossbow",        "Specialist", "Vorkath BIS -- reacts to Vorkath/DT2 activity"),
-    ("Enhanced crystal weapon seed",  "Specialist", "Corrupted Gauntlet -- supply changes affect Bowfa ecosystem"),
-    # Accessories
-    ("Necklace of anguish",           "Accessories","Ranged neck BIS -- new gear displacement risk"),
-    ("Tormented bracelet",            "Accessories","Mage bracelet BIS -- displacement risk from new content"),
-    ("Elysian spirit shield",         "Accessories","Prestige tank shield -- fixed supply store-of-value"),
-    ("Arcane spirit shield",          "Accessories","Mage spirit shield -- steady collector demand"),
-    # Prestige
-    ("3rd age platebody",             "Prestige",   "Store-of-value / status flex -- fixed supply"),
-    ("3rd age longsword",             "Prestige",   "Rare clue reward -- speculative value"),
+    # -- Chambers of Xeric --
+    ("Twisted bow",                   "CoX",         "Ranged BIS -- rarest CoX unique; permanently scarce supply"),
+    ("Kodai wand",                    "CoX",         "Mage BIS autocast -- steady demand from mage PvMers"),
+    ("Elder maul",                    "CoX",         "Crush BIS -- ToA drives additional demand"),
+    ("Ancestral robe top",            "CoX",         "Mage BIS armour -- reactive to mage update announcements"),
+    ("Ancestral robe bottom",         "CoX",         "Mage BIS armour -- tied to top demand"),
+    ("Ancestral hat",                 "CoX",         "Mage BIS helm -- completes ancestral set"),
+    ("Dragon claws",                  "CoX",         "Spec weapon -- high PvP + PvM demand; volatile"),
+    ("Dexterous prayer scroll",       "CoX",         "Rigour unlock -- Raids 4 prep driving CoX participation"),
+    ("Arcane prayer scroll",          "CoX",         "Augury unlock -- tied to Rigour demand"),
+    ("Harmonised orb",                "CoX",         "Mage BIS for NM/PvM -- CoX changes shift supply"),
+    ("Volatile orb",                  "CoX",         "High-value spec weapon orb -- spec meta proxy"),
+    ("Eldritch orb",                  "CoX",         "Prayer restore spec orb -- niche but stable demand"),
+    # -- Theatre of Blood --
+    ("Scythe of vitur",               "ToB",         "Melee BIS for slayer/raids -- Raids 4 prep demand active"),
+    ("Ghrazi rapier",                 "ToB",         "Stab BIS -- Summer Sweep-Up +4 str buff live now"),
+    ("Sanguinesti staff (uncharged)", "ToB",         "Mage BIS -- Summer Sweep-Up 6% DPS buff + cheaper charges"),
+    ("Avernic defender hilt",         "ToB",         "Defender upgrade -- tied to ToB/raids participation"),
+    ("Justiciar faceguard",           "ToB",         "Tank helm -- set bonus removed in Sweep-Up; demand softening"),
+    ("Justiciar chestguard",          "ToB",         "Tank body -- set bonus removal reduces full-set value"),
+    ("Justiciar legguards",           "ToB",         "Tank legs -- same set bonus removal impact"),
+    # -- Tombs of Amascut --
+    ("Tumeken's shadow",              "ToA",         "Mage BIS -- Raids 4 prep meta; confirmed must-have"),
+    ("Osmumten's fang",               "ToA",         "Stab BIS -- consistently high ToA activity proxy"),
+    ("Elidinis' ward (f)",            "ToA",         "Mage offhand BIS -- completes ToA mage setup"),
+    ("Masori body (f)",               "ToA",         "Range BIS armour -- Necklace of Rupture buffs range setups June 30"),
+    ("Masori chaps (f)",              "ToA",         "Range BIS legs -- displacement risk from Blood Moon Rises"),
+    ("Masori mask (f)",               "ToA",         "Range BIS helm -- completes Masori set"),
+    # -- Nex --
+    ("Torva platebody",               "Nex",         "Melee BIS body -- Soulreaper axe buff increases melee activity"),
+    ("Torva platelegs",               "Nex",         "Melee BIS legs -- melee hype proxy"),
+    ("Torva full helm",               "Nex",         "Completes Torva set -- melee demand proxy"),
+    ("Zaryte crossbow",               "Nex",         "Range BIS alt -- Necklace of Rupture (June 30) buffs range setups"),
+    ("Zaryte vambraces",              "Nex",         "Endgame range gloves BIS -- Nex activity proxy"),
+    # -- Nightmare / Phosani --
+    ("Inquisitor's mace",             "Nightmare",   "Crush BIS spec -- Sweep-Up standalone buffed; set bonus removed"),
+    ("Inquisitor's hauberk",          "Nightmare",   "Set bonus removed -- weaker with mace post-Sweep-Up; price risk"),
+    ("Inquisitor's plateskirt",       "Nightmare",   "Same as hauberk -- set synergy gone post-Sweep-Up"),
+    ("Nightmare staff",               "Nightmare",   "Mage staff -- base for Harmonised/Volatile/Eldritch orbs"),
+    # -- Desert Treasure 2 --
+    ("Soulreaper axe",                "DT2",         "Melee BIS -- Summer Sweep-Up major rework; biggest buff in years"),
+    ("Virtus robe top",               "DT2",         "DT2 mage hybrid -- scepter DPS buffs boost mage ecosystem"),
+    ("Virtus robe bottom",            "DT2",         "DT2 mage hybrid -- tied to Virtus top demand"),
+    ("Bellator ring",                 "DT2",         "Melee ring -- Soulreaper buff raises melee demand proxy"),
+    ("Venator ring",                  "DT2",         "Range ring -- bow consistency fix in Sweep-Up aids range meta"),
+    ("Magus ring",                    "DT2",         "Mage ring -- tied to Shadow + ancestral scepter buff ecosystem"),
+    ("Ultor ring",                    "DT2",         "Strength ring -- melee proxy; Soulreaper hype driver"),
+    # -- God Wars Dungeon --
+    ("Bandos chestplate",             "GWD",         "Melee BIS body at mid-tier -- returning-player demand proxy"),
+    ("Bandos tassets",                "GWD",         "Melee BIS legs -- pairs with chestplate demand"),
+    ("Armadyl chestplate",            "GWD",         "Range mid-tier body -- solid baseline demand"),
+    ("Armadyl chainskirt",            "GWD",         "Range mid-tier legs -- pairs with chestplate"),
+    ("Armadyl helmet",                "GWD",         "Range mid-tier helm -- completes Armadyl set"),
+    # -- Zulrah --
+    ("Tanzanite fang",                "Zulrah",      "Toxic blowpipe component -- universal early-mid BIS range weapon"),
+    ("Magic fang",                    "Zulrah",      "Toxic staff upgrade -- budget mage weapon option"),
+    ("Serpentine visage",             "Zulrah",      "Serpentine helm component -- slayer/venom utility"),
+    ("Zulrah's scales",               "Zulrah",      "Blowpipe/serp helm charge resource -- consumable; constant demand"),
+    # -- Cerberus --
+    ("Primordial crystal",            "Cerberus",    "Primordial boots component -- BIS melee boots; 1/512 drop rate"),
+    ("Eternal crystal",               "Cerberus",    "Eternal boots component -- BIS mage boots; 1/512 drop rate"),
+    ("Pegasian crystal",              "Cerberus",    "Pegasian boots component -- BIS range boots; 1/512 drop rate"),
+    # -- Dagannoth Kings --
+    ("Berserker ring (i)",            "Dagannoth",   "Melee ring upgrade -- imbued; NMZ/slayer demand proxy"),
+    ("Archers ring (i)",              "Dagannoth",   "Range ring -- imbued; steady mid-tier demand"),
+    ("Seers ring (i)",                "Dagannoth",   "Mage ring -- imbued; mid-tier mage demand proxy"),
+    ("Dragon axe",                    "Dagannoth",   "BIS woodcutting axe -- consistent skilling upgrade demand"),
+    # -- Moons of Peril / Varlamore --
+    ("Eclipse atlatl",                "Varlamore",   "New range weapon -- PvP nerfed in Sweep-Up; PvM use stable"),
+    ("Blood moon helm",               "Varlamore",   "Mid-tier melee helm -- Varlamore activity proxy"),
+    ("Blood moon chestplate",         "Varlamore",   "Mid-tier melee body -- tied to helm demand"),
+    ("Blood moon tassets",            "Varlamore",   "Mid-tier melee legs -- completes Blood Moon set"),
+    # -- Raids 4 / Fractured Archive prep --
+    ("Enhanced crystal weapon seed",  "Raids/FA",    "Corrupted Gauntlet -- Sweep-Up may increase CG supply"),
+    ("Crystal armour seed",           "Raids/FA",    "CG armour seed -- Raids 4 prep increases CG participation"),
+    # -- Specialist Weapons --
+    ("Dragon hunter lance",           "Specialist",  "Vorkath/KBD BIS -- no rework in current roadmap; stable"),
+    ("Dragon hunter crossbow",        "Specialist",  "Vorkath range BIS -- pairs with lance demand patterns"),
+    ("Abyssal whip",                  "Specialist",  "Slayer staple melee -- permanent demand floor"),
+    ("Abyssal dagger",                "Specialist",  "Spec dagger -- whip complement; stable slayer demand"),
+    # -- Accessories --
+    ("Necklace of anguish",           "Accessories", "Range BIS neck -- BEING REPLACED June 30 by Necklace of Rupture"),
+    ("Tormented bracelet",            "Accessories", "Mage BIS bracelet -- Blood Moon Rises may add hybrid competitor"),
+    ("Amulet of torture",             "Accessories", "Melee BIS neck -- Soulreaper buff increases melee demand"),
+    ("Elysian spirit shield",         "Accessories", "Prestige tank shield -- fixed supply store-of-value"),
+    ("Arcane spirit shield",          "Accessories", "Mage spirit shield -- steady collector demand"),
+    ("Spectral spirit shield",        "Accessories", "Prayer/mage def shield -- niche but tracked"),
+    # -- High-Ticket Clue Items --
+    ("3rd age platebody",             "Prestige",    "Ultra-rare hard/elite clue -- store-of-value; ~1/42K rate"),
+    ("3rd age platelegs",             "Prestige",    "Ultra-rare hard clue -- pairs with platebody"),
+    ("3rd age full helmet",           "Prestige",    "Ultra-rare hard clue -- completes 3rd age melee set"),
+    ("3rd age longsword",             "Prestige",    "Rare hard clue reward -- speculative; low supply"),
+    ("3rd age bow",                   "Prestige",    "Ultra-rare elite/master clue -- range prestige item"),
+    ("3rd age wand",                  "Prestige",    "Ultra-rare elite clue -- mage prestige item"),
+    ("3rd age cloak",                 "Prestige",    "Rare master clue -- complement to 3rd age sets"),
+    ("Ranger boots",                  "Prestige",    "Medium clue BIS range boots -- high demand relative to rate"),
+    ("Robin hood hat",                "Prestige",    "Hard clue range helm -- consistently desired cosmetic"),
+    ("Gilded scimitar",               "Prestige",    "Hard/elite gilded -- cosmetic floor item; collector appeal"),
+    ("Gilded platebody",              "Prestige",    "Elite/master gilded armour -- prestige flex item"),
+    ("Gilded platelegs",              "Prestige",    "Elite/master gilded -- pairs with platebody"),
+    ("Gilded full helm",              "Prestige",    "Elite/master gilded -- completes gilded melee set"),
 ]
 
-WATCHLIST_NAMES    = [w[0] for w in WATCHLIST]
+WATCHLIST_NAMES     = [w[0] for w in WATCHLIST]
 WATCHLIST_CATALYSTS = {w[0]: w[2] for w in WATCHLIST}
 WATCHLIST_CATEGORY  = {w[0]: w[1] for w in WATCHLIST}
 
 # Signals Universe -- TYPE | STATUS | REASON
 SIGNALS_UNIVERSE = {
-    "Soulreaper axe":               "Game Update | ACTIVE | Raids 4 dev blog confirmed melee focus; axe demand accelerating",
-    "Tumeken's shadow":             "Meta Shift | ACTIVE | Remains mage BIS with no replacement confirmed; shadow ecosystem stable",
-    "Zaryte crossbow":              "Meta Shift | WATCH | Range BIS alternative; reacts sharply to range update announcements",
-    "Dragon hunter lance":          "Boss Demand | WATCH | KBD/Vorkath proxy; spikes on boss rework or slayer hype",
-    "Dragon hunter crossbow":       "Boss Demand | WATCH | Vorkath BIS; sensitive to Vorkath task weight and DT2 activity",
-    "Ancestral robe top":           "Meta Shift | WATCH | Mage BIS; sharply reactive to mage update announcements",
-    "Ancestral robe bottom":        "Meta Shift | WATCH | Tied to ancestral top -- moves in tandem",
-    "Virtus robe top":              "New Content | WATCH | DT2 mage hybrid; watch for DT2 boss rebalance",
-    "Virtus robe bottom":           "New Content | WATCH | Tied to Virtus top demand",
-    "Torva full helm":              "Meta Shift | WATCH | Completes Torva set; melee hype accelerator",
-    "Justiciar faceguard":          "Meta Shift | WATCH | Tank meta indicator; rises on tanking discussion spikes",
-    "Elysian spirit shield":        "Supply Shock | WATCH | Fixed supply; slow mover but high floor -- watch for prestige buying",
-    "Zaryte vambraces":             "Meta Shift | WATCH | Endgame range gloves; Nex activity proxy",
-    "Inquisitor's mace":            "Boss Demand | WATCH | Crush BIS; reactive to Nightmare/Phosani activity trends",
-    "Inquisitor's hauberk":         "Boss Demand | WATCH | Set demand proxy for Inquisitor mace buyers",
-    "Inquisitor's plateskirt":      "Boss Demand | WATCH | Set demand proxy -- moves with hauberk",
-    "Venator ring":                 "New Content | WATCH | Most liquid DT2 ring; range meta barometer",
-    "Bellator ring":                "New Content | WATCH | Melee DT2 ring; watch for melee BIS discussion",
-    "Ultor ring":                   "New Content | WATCH | Strength ring proxy; follows melee meta",
-    "Magus ring":                   "New Content | WATCH | Mage ring proxy; tied to shadow/ancestral demand",
-    "Enhanced crystal weapon seed": "Supply Shock | WATCH | CG supply dynamics; Bowfa ecosystem tightening on supply nerfs",
-    "Dragon claws":                 "PvP Meta | WATCH | Spec weapon -- rises sharply on PvP tournament announcements",
-    "Volatile orb":                 "Community Hype | WATCH | CoX spec orb; spikes on streamer showcases and CoX meta posts",
+    # ---- ACTIVE: Blood Moon Rises (June 30, 2026) ----
+    "Necklace of anguish":          "New Content | ACTIVE | Necklace of Rupture (new BIS range neck) drops June 30 -- direct displacement; sell into hype before release",
+    "Soulreaper axe":               "Game Update | ACTIVE | Summer Sweep-Up live: major rework -- +4 str, stacks to 5, 50% acc buff, 12.5% def drain, min 30% spec hit. Clear price catalyst",
+    "Sanguinesti staff (uncharged)":"Game Update | ACTIVE | Summer Sweep-Up: 6% DPS buff, heal 1-in-5 (up from 1-in-6), charge cost 3->2 blood runes. Demand spike likely",
+    "Ghrazi rapier":                "Game Update | ACTIVE | Summer Sweep-Up: +4 str bonus guarantees extra max hit in all setups. ~2-2.5% DPS buff. Watch for price reaction",
+    "Inquisitor's mace":            "Game Update | ACTIVE | Summer Sweep-Up: set bonus REMOVED -- mace standalone buffed (+5 str, +7 crush acc) but net weaker with full Inq set. Inq armour demand likely falls",
+    "Inquisitor's hauberk":         "Game Update | ACTIVE | Inquisitor set bonus removed -- pieces no longer synergise with mace. Demand for full set drops; individual pieces may slide",
+    "Inquisitor's plateskirt":      "Game Update | ACTIVE | Same as hauberk -- set bonus removal reduces value of wearing with mace. Watch for price decline",
+    # ---- ACTIVE: Raids 4 prep demand ----
+    "Twisted bow":                  "New Content | ACTIVE | Raids 4 (Autumn 2026) confirmed -- Tbow listed as mandatory prep gear by community. Sustained accumulation phase underway",
+    "Tumeken's shadow":             "New Content | ACTIVE | Raids 4 prep -- Shadow confirmed BIS mage for new raid. Community guides recommending it as must-have before release",
+    "Scythe of vitur":              "New Content | ACTIVE | Raids 4 prep -- Scythe listed as closest reference weapon for new raid mechanics. Demand building toward Autumn release",
+    # ---- WATCH: Blood Moon Rises supply/displacement plays ----
+    "Tormented bracelet":           "New Content | WATCH | Blood Moon Rises (June 30) adds Leech Fin -- new melee/hybrid BiS bracelet. Tormented bracelet may see displacement pressure",
+    "Osmumten's fang":              "New Content | WATCH | Crimson Bludgeon (new crush BIS spec) drops June 30 -- fang ecosystem unaffected but watch for market-wide high-ticket volatility around release",
+    "Zaryte crossbow":              "New Content | WATCH | Necklace of Rupture (new BIS range neck) releases June 30 -- upgrades ranged setups; crossbow demand proxy for range meta activity",
+    # ---- WATCH: Summer Sweep-Up ongoing reactions ----
+    "Ancestral robe top":           "Game Update | WATCH | Ancient scepters buffed to 10% magic damage (up from 5%) -- indirect mage DPS ecosystem buff; ancestral demand stable or mild uptick",
+    "Ancestral robe bottom":        "Game Update | WATCH | Tied to ancestral top -- same indirect mage DPS buff from scepter changes",
+    "Virtus robe top":              "Game Update | WATCH | Scepter buffs boost hybrid mage DPS setups -- Virtus benefits from wider mage DPS improvements",
+    "Virtus robe bottom":           "Game Update | WATCH | Tied to Virtus top demand",
+    "Venator ring":                 "Game Update | WATCH | Summer Sweep-Up: Venator bow made more consistent via new targeting -- ring demand proxy for range meta; watch for uptick",
+    "Enhanced crystal weapon seed": "New Content | WATCH | GE added to Corrupted Gauntlet in Sweep-Up blog -- easier CG access may increase Bowfa supply; seed price could soften",
+    "Dragon claws":                 "PvP Meta | WATCH | Summer Sweep-Up Eclipse atlatl nerfed 1-tick slower in PvP without full set -- claw spec value in PvP stays high by comparison",
+    "Elysian spirit shield":        "Supply Shock | WATCH | Fixed supply store-of-value; Blood Moon Rises hype driving general high-ticket market activity -- floor remains strong",
+    # ---- WATCH: Raids 4 ecosystem ----
+    "Avernic defender hilt":        "New Content | WATCH | Raids 4 Autumn 2026 -- ToB participation expected to rise as players gear up; Avernic demand proxy for ToB activity",
+    "Dexterous prayer scroll":      "New Content | WATCH | CoX participation rising as players prep for Raids 4 -- Rigour scroll demand proxy for CoX activity levels",
+    "Arcane prayer scroll":         "New Content | WATCH | Same as Dexterous -- Augury demand proxy for CoX/prep activity",
+    "Bellator ring":                "New Content | WATCH | Raids 4 Autumn -- DT2 rings being accumulated as part of endgame gear prep; melee ring proxy",
+    "Ultor ring":                   "New Content | WATCH | Same as Bellator -- strength ring proxy for melee prep meta",
+    "Magus ring":                   "New Content | WATCH | Mage ring proxy -- benefits from both shadow demand and ancestral/scepter DPS buff discussions",
+    # ---- COOLING ----
+    "Zaryte vambraces":             "Meta Shift | COOLING | No specific catalyst this cycle; Nex activity stable but no new hype driver. Monitor for Raids 4 range demand proxy",
+    "Justiciar faceguard":          "Meta Shift | COOLING | No tank meta catalyst active; Inq set bonus removal may marginally shift attention away from full armour sets",
+    "Dragon hunter lance":          "Boss Demand | COOLING | No Vorkath/KBD rework announced; stable demand but no near-term spike catalyst",
+    "Dragon hunter crossbow":       "Boss Demand | COOLING | Same as lance -- no Vorkath rework in current roadmap. Hold steady",
 }
 
 SHIFTS_HIGH_TICKET_SEEDS = [
@@ -464,6 +514,7 @@ def compute_flips(latest, mapping, hour_vols, fmin_vols):
     for w in watch:
         w["category"]       = WATCHLIST_CATEGORY.get(w["name"], "")
         w["signal_context"] = WATCHLIST_CATALYSTS.get(w["name"], "")
+        w["catalyst"]       = WATCHLIST_CATALYSTS.get(w["name"], "")
     watch = sorted(watch, key=lambda r: (
         _TREND_ORDER.get(r.get("trend", "Flat"), 5),
         -abs(r.get("chg_7d") or 0),
