@@ -5,7 +5,7 @@ HEADERS = {"User-Agent": "OsrsFlipDashboard/Owen"}
 TAX_RATE = 0.02
 TAX_CAP  = 5_000_000
 
-# ── Watchlist ──────────────────────────────────────────────────────────────────
+# --- Watchlist 
 WATCHLIST = [
     ("Twisted bow",                   "CoX BIS \u2014 permanently scarce; ranged PvM always relevant"),
     ("Scythe of vitur",               "ToB BIS \u2014 BiS melee for slayer/raids; supply drains via charges"),
@@ -36,7 +36,7 @@ WATCHLIST = [
 WATCHLIST_NAMES     = [w[0] for w in WATCHLIST]
 WATCHLIST_CATALYSTS = {w[0]: w[1] for w in WATCHLIST}
 
-# ── Signals Universe ───────────────────────────────────────────────────────────
+# --- Signals Universe 
 SIGNALS_UNIVERSE = {
     "Soulreaper axe":          "Game update | Active | Raids 4 rework buffed melee; axe demand spiking",
     "Zaryte crossbow":         "Meta shift | Watch | Range BIS alternative; reacts to range meta changes",
@@ -55,7 +55,7 @@ SIGNALS_UNIVERSE = {
     "Inquisitor's plateskirt": "Boss demand | Watch | Inquisitor set demand proxy",
 }
 
-# ── Shifts tab item pools ──────────────────────────────────────────────────────
+# --- Shifts tab item pools 
 # High-ticket items tracked in the Shifts tab (sell price >= 3M).
 # These are pulled dynamically from market data by price threshold,
 # but this seed list ensures key items are always included even if below threshold temporarily.
@@ -92,7 +92,7 @@ SHIFTS_BULK_SEEDS = [
 ]
 
 
-# ── HTTP ───────────────────────────────────────────────────────────────────────
+# --- HTTP 
 def _get(path, timeout=14):
     r = requests.get(f"{BASE}{path}", headers=HEADERS, timeout=timeout)
     r.raise_for_status()
@@ -123,7 +123,7 @@ def fetch_timeseries(item_id, timestep="24h"):
         return []
 
 
-# ── Pricing helpers ────────────────────────────────────────────────────────────
+# --- Pricing helpers 
 def tax(price):
     if price < 50:
         return 0
@@ -154,7 +154,7 @@ def fill_quality(ratio):
     return 0.5, "Flooded"
 
 
-# ── Row builder ────────────────────────────────────────────────────────────────
+# --- Row builder 
 def build_rows(latest, mapping, hour_vols, fmin_vols):
     mapping_by_id = {item["id"]: item for item in mapping}
     rows = []
@@ -205,7 +205,7 @@ def build_rows(latest, mapping, hour_vols, fmin_vols):
     return rows
 
 
-# ── Trend helpers ──────────────────────────────────────────────────────────────
+# --- Trend helpers 
 def pct_change(cur, prev):
     try:
         cur, prev = float(cur), float(prev)
@@ -294,7 +294,7 @@ def enrich_with_trends(rows):
     return enriched
 
 
-# ── Intraday helpers ───────────────────────────────────────────────────────────
+# --- Intraday helpers 
 def _avg_high(bucket):
     """Extract avgHighPrice from a 5m or 1h bucket dict."""
     if not bucket or not isinstance(bucket, dict):
@@ -341,7 +341,7 @@ def fetch_intraday_shifts(item_ids, fmin_data_all):
     return results
 
 
-# ── Viability filter ───────────────────────────────────────────────────────────
+# --- Viability filter 
 def is_viable_bulk(r):
     buy_hr    = r.get("buy_qty_hr", 0)  or 0
     sell_hr   = r.get("sell_qty_hr", 0) or 0
@@ -357,11 +357,11 @@ def is_viable_bulk(r):
     return True
 
 
-# ── Shifts tab data builder ────────────────────────────────────────────────────
+# --- Shifts tab data builder 
 def build_shifts_data(all_rows, mapping):
     """
     Build high-ticket and bulk item lists for the Shifts tab.
-    Returns (high_ticket_rows, bulk_rows) — each pre-enriched with
+    Returns (high_ticket_rows, bulk_rows) -- each pre-enriched with
     daily trends (chg_1d/7d/14d/30d) AND intraday shifts (chg_20m/40m/1h/6h/12h).
     """
     name_map = {r["name"].lower(): r for r in all_rows}
@@ -411,7 +411,7 @@ def build_shifts_data(all_rows, mapping):
     return ht_enriched, bulk_enriched
 
 
-# ── Main compute ───────────────────────────────────────────────────────────────
+# --- Main compute 
 _TREND_ORDER = {"Extended": 0, "Building": 1, "Pullback": 2, "Weakening": 3, "Flat": 4}
 
 def compute_flips(latest, mapping, hour_vols, fmin_vols):
