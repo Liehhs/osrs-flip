@@ -141,6 +141,56 @@ def build_rows(latest, mapping, hour_vols, fmin_vols):
         })
     return rows
 
+
+
+def pct_change(cur, prev):
+    try:
+        cur = float(cur); prev = float(prev)
+        if prev <= 0:
+            return None
+        return round(((cur - prev) / prev) * 100, 2)
+    except Exception:
+        return None
+
+def classify_trend(ch1, ch7, ch30):
+    ch1 = ch1 if ch1 is not None else 0
+    ch7 = ch7 if ch7 is not None else 0
+    ch30 = ch30 if ch30 is not None else 0
+    if ch30 > 5 and ch7 < 0 and ch1 < 0:
+        return "Pullback"
+    if ch30 > 5 and ch7 > 0 and ch1 > -1:
+        return "Building"
+    if ch30 > 15 and ch7 > 5 and ch1 > 2:
+        return "Extended"
+    if ch30 <= 0 and ch7 < 0:
+        return "Weakening"
+    return "Flat"
+
+def enrich_watchlist_with_trends(watch_rows):
+    enriched = []
+    for r in watch_rows:
+        item = dict(r)
+        ts = fetch_timeseries(r["id"], "24h")
+        if ts and len(ts) >= 31:
+            highs = [p.get("avgHighPrice") or 0 for p in ts if p.get("avgHighPrice")]
+            if len(highs) >= 31:
+                cur = highs[-1]
+                d1 = highs[-2]
+                d7 = highs[-8]
+                d30 = highs[-31]
+                item["chg_1d"] = pct_change(cur, d1)
+                item["chg_7d"] = pct_change(cur, d7)
+                item["chg_30d"] = pct_change(cur, d30)
+                item["trend"] = classify_trend(item["chg_1d"], item["chg_7d"], item["chg_30d"])
+            else:
+                item["chg_1d"] = item["chg_7d"] = item["chg_30d"] = None
+                item["trend"] = "Flat"
+        else:
+            item["chg_1d"] = item["chg_7d"] = item["chg_30d"] = None
+            item["trend"] = "Flat"
+        enriched.append(item)
+    return enriched
+
 def compute_flips(latest, mapping, hour_vols, fmin_vols):
     rows = build_rows(latest, mapping, hour_vols, fmin_vols)
     bulk = sorted(
@@ -157,4 +207,5 @@ def compute_flips(latest, mapping, hour_vols, fmin_vols):
     )[:40]
     all_by_name = {r["name"].lower(): r for r in rows}
     watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
+    watch = enrich_watchlist_with_trends(watch)
     return bulk, singular, high_roi, watch, rows

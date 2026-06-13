@@ -128,6 +128,23 @@ def fq_css(label):
         "No data":      "color:#64748b",
     }.get(label, "")
 
+def pct_css(v):
+    if v is None: return "color:#64748b"
+    if v >= 10: return "color:#22c55e; font-weight:600"
+    if v > 0: return "color:#86efac"
+    if v <= -10: return "color:#ef4444; font-weight:600"
+    if v < 0: return "color:#fca5a5"
+    return "color:#cbd5e1"
+
+def trend_css(t):
+    return {
+        "Pullback": "color:#facc15; font-weight:600",
+        "Building": "color:#4ade80; font-weight:600",
+        "Extended": "color:#fb923c; font-weight:600",
+        "Weakening": "color:#ef4444; font-weight:600",
+        "Flat": "color:#94a3b8",
+    }.get(t, "")
+
 # ── DataFrame builder ──────────────────────────────────────────────────────────
 COL_DEFS = {
     "name":            ("Item",          lambda r: r.get("name","—")),
@@ -145,6 +162,10 @@ COL_DEFS = {
     "potential_profit":("Pot. Profit",   lambda r: fmt_gp(r.get("potential_profit"))),
     "adj_potential":   ("Adj. Potential",lambda r: fmt_gp(r.get("adj_potential"))),
     "realistic_profit":("Realistic 4hr", lambda r: fmt_gp(r.get("realistic_profit"))),
+    "chg_1d":         ("1D %",          lambda r: "—" if r.get("chg_1d") is None else f"{r.get('chg_1d',0):+.1f}%"),
+    "chg_7d":         ("7D %",          lambda r: "—" if r.get("chg_7d") is None else f"{r.get('chg_7d',0):+.1f}%"),
+    "chg_30d":        ("30D %",         lambda r: "—" if r.get("chg_30d") is None else f"{r.get('chg_30d',0):+.1f}%"),
+    "trend":          ("Trend",         lambda r: r.get("trend","Flat")),
 }
 
 def to_df(rows, col_keys):
@@ -160,6 +181,10 @@ def make_styler(df, rows, col_keys):
     roi_label    = COL_DEFS["roi"][0]
     ratio_label  = COL_DEFS["ratio"][0]
     fq_label_col = COL_DEFS["fq_label"][0]
+    ch1_label     = COL_DEFS["chg_1d"][0]
+    ch7_label     = COL_DEFS["chg_7d"][0]
+    ch30_label    = COL_DEFS["chg_30d"][0]
+    trend_label   = COL_DEFS["trend"][0]
 
     profit_vals = [r.get("profit_unit", 0) for r in rows]
     roi_vals    = [r.get("roi", 0)         for r in rows]
@@ -176,6 +201,10 @@ def make_styler(df, rows, col_keys):
         roi_val = roi_vals[idx]
         ratio_v = r.get("ratio")
         fq_v    = r.get("fq_label", "No data")
+        ch1_v   = r.get("chg_1d")
+        ch7_v   = r.get("chg_7d")
+        ch30_v  = r.get("chg_30d")
+        tr_v    = r.get("trend", "Flat")
         result  = []
         for col in cols:
             if col == profit_label:
@@ -191,6 +220,14 @@ def make_styler(df, rows, col_keys):
                 result.append(ratio_css(ratio_v))
             elif col == fq_label_col:
                 result.append(fq_css(fq_v))
+            elif col == ch1_label:
+                result.append(pct_css(ch1_v))
+            elif col == ch7_label:
+                result.append(pct_css(ch7_v))
+            elif col == ch30_label:
+                result.append(pct_css(ch30_v))
+            elif col == trend_label:
+                result.append(trend_css(tr_v))
             else:
                 result.append("")
         return result
@@ -402,57 +439,80 @@ with t_roi:
 # ═══════════════════════════════════════════════════════════════════════════════
 with t_watch:
     if watch:
-        # Table with catalyst column
-        WATCH_COLS = ["name","buy_price","sell_price","tax","profit_unit","roi",
-                      "buy_qty_hr","sell_qty_hr","ratio","fq_label","ge_limit"]
-        df_w = to_df(watch, WATCH_COLS)
-        df_w.insert(1, "Catalyst", [WATCHLIST_CATALYSTS.get(r["name"], "") for r in watch])
-        # Apply styling only on the data columns (not Catalyst)
-        data_cols_only = to_df(watch, WATCH_COLS)
-        styled_w = make_styler(data_cols_only, watch, WATCH_COLS)
+        trend_order = {"Pullback": 0, "Building": 1, "Extended": 2, "Flat": 3, "Weakening": 4}
+        f1, f2 = st.columns([1, 4])
+        with f1:
+            trend_filter = st.selectbox("Trend filter", ["All", "Pullback", "Building", "Extended", "Flat", "Weakening"], index=0, key="watch_trend")
+        display_watch = [r for r in watch if trend_filter == "All" or r.get("trend") == trend_filter]
+        display_watch = sorted(display_watch, key=lambda r: (trend_order.get(r.get("trend", "Flat"), 9), -(r.get("chg_30d") or -999)))
 
-        # Re-build with catalyst for display
+        WATCH_COLS = ["name", "trend", "chg_1d", "chg_7d", "chg_30d", "buy_price", "sell_price", "tax", "profit_unit", "roi",
+                      "buy_qty_hr", "sell_qty_hr", "ratio", "fq_label", "ge_limit"]
         records = []
-        for r in watch:
+        for r in display_watch:
             row = {COL_DEFS[k][0]: COL_DEFS[k][1](r) for k in WATCH_COLS}
             row["Catalyst"] = WATCHLIST_CATALYSTS.get(r["name"], "")
             records.append(row)
         df_w_full = pd.DataFrame(records)
-        cols_order = ["Item", "Catalyst"] + [c for c in df_w_full.columns if c not in ("Item", "Catalyst")]
+        cols_order = ["Item", "Trend", "1D %", "7D %", "30D %", "Catalyst"] + [c for c in df_w_full.columns if c not in ("Item", "Trend", "1D %", "7D %", "30D %", "Catalyst")]
         df_w_full = df_w_full[cols_order]
 
         profit_label = COL_DEFS["profit_unit"][0]
         roi_label    = COL_DEFS["roi"][0]
         ratio_label  = COL_DEFS["ratio"][0]
         fq_label_col = COL_DEFS["fq_label"][0]
-        profit_vals  = [r.get("profit_unit", 0) for r in watch]
-        roi_vals     = [r.get("roi", 0)         for r in watch]
+        ch1_label    = COL_DEFS["chg_1d"][0]
+        ch7_label    = COL_DEFS["chg_7d"][0]
+        ch30_label   = COL_DEFS["chg_30d"][0]
+        trend_label  = COL_DEFS["trend"][0]
+        profit_vals  = [r.get("profit_unit", 0) for r in display_watch]
+        roi_vals     = [r.get("roi", 0) for r in display_watch]
         p_max = max(profit_vals) if profit_vals else 1
         all_cols = list(df_w_full.columns)
 
         def style_watch(row):
             idx = row.name
-            if idx >= len(watch): return [""] * len(all_cols)
-            r       = watch[idx]
+            if idx >= len(display_watch):
+                return [""] * len(all_cols)
+            r       = display_watch[idx]
             pct     = profit_vals[idx] / p_max if p_max else 0
             roi_val = roi_vals[idx]
             ratio_v = r.get("ratio")
             fq_v    = r.get("fq_label", "No data")
+            ch1_v   = r.get("chg_1d")
+            ch7_v   = r.get("chg_7d")
+            ch30_v  = r.get("chg_30d")
+            tr_v    = r.get("trend", "Flat")
             result  = []
             for col in all_cols:
                 if col == profit_label:
-                    if pct >= 0.7:   result.append("background:#052e16; color:#4ade80; font-weight:600")
-                    elif pct >= 0.4: result.append("background:#0f2d1a; color:#86efac")
-                    else:            result.append("")
+                    if pct >= 0.7:
+                        result.append("background:#052e16; color:#4ade80; font-weight:600")
+                    elif pct >= 0.4:
+                        result.append("background:#0f2d1a; color:#86efac")
+                    else:
+                        result.append("")
                 elif col == roi_label:
-                    if roi_val >= 20:   result.append("background:#1c1000; color:#fbbf24; font-weight:600")
-                    elif roi_val >= 10: result.append("background:#1a1200; color:#fde68a")
-                    elif roi_val >= 5:  result.append("background:#171400; color:#fef9c3")
-                    else:               result.append("")
+                    if roi_val >= 20:
+                        result.append("background:#1c1000; color:#fbbf24; font-weight:600")
+                    elif roi_val >= 10:
+                        result.append("background:#1a1200; color:#fde68a")
+                    elif roi_val >= 5:
+                        result.append("background:#171400; color:#fef9c3")
+                    else:
+                        result.append("")
                 elif col == ratio_label:
                     result.append(ratio_css(ratio_v))
                 elif col == fq_label_col:
                     result.append(fq_css(fq_v))
+                elif col == ch1_label:
+                    result.append(pct_css(ch1_v))
+                elif col == ch7_label:
+                    result.append(pct_css(ch7_v))
+                elif col == ch30_label:
+                    result.append(pct_css(ch30_v))
+                elif col == trend_label:
+                    result.append(trend_css(tr_v))
                 else:
                     result.append("")
             return result
@@ -464,11 +524,11 @@ with t_watch:
 
         st.markdown("<div class='section-label'>Current spread by item</div>", unsafe_allow_html=True)
         fig_w = go.Figure(go.Bar(
-            x=[r["name"] for r in watch],
-            y=[r["profit_unit"] for r in watch],
-            marker=dict(color=[r["roi"] for r in watch], colorscale="oranges",
+            x=[r["name"] for r in display_watch],
+            y=[r["profit_unit"] for r in display_watch],
+            marker=dict(color=[r["roi"] for r in display_watch], colorscale="oranges",
                         showscale=True, colorbar=dict(title="ROI %")),
-            text=[fmt_gp(r["profit_unit"]) for r in watch],
+            text=[fmt_gp(r["profit_unit"]) for r in display_watch],
             textposition="outside",
             hovertemplate="<b>%{x}</b><br>Profit/unit: %{text}<br>ROI: %{marker.color:.1f}%<extra></extra>",
         ))
@@ -480,8 +540,9 @@ with t_watch:
         st.plotly_chart(fig_w, use_container_width=True)
 
         st.markdown("<div class='section-label'>90-day price history</div>", unsafe_allow_html=True)
-        selected = st.selectbox("Select item", [r["name"] for r in watch], key="watch_item")
-        sel_row  = next((r for r in watch if r["name"] == selected), None)
+        select_source = display_watch if display_watch else watch
+        selected = st.selectbox("Select item", [r["name"] for r in select_source], key="watch_item")
+        sel_row  = next((r for r in select_source if r["name"] == selected), None)
         if sel_row:
             ts_data = fetch_timeseries(sel_row["id"], "24h")
             if ts_data:
@@ -512,7 +573,6 @@ with t_watch:
                 )
                 st.plotly_chart(fig_ts, use_container_width=True)
 
-                # Buy / hold / caution signal
                 if cur_buy < avg_low * 0.97:
                     st.success(f"Buy signal: current buy price ({fmt_gp(cur_buy)}) is >3% below 90-day avg ({fmt_gp(avg_low)}). Potential dip entry.")
                 elif cur_sell > avg_high * 1.05:
