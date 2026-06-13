@@ -181,12 +181,15 @@ if bulk:
     } for r in bulk])
 
     st.dataframe(
-        df_bulk.style
-            .format({"Buy": "{:,.0f}", "Sell": "{:,.0f}", "Spread": "{:,.0f}",
-                     "ROI %": "{:.2f}", "GE Limit": "{:,.0f}",
-                     "Trades / hr": "{:,.0f}", "Cycle GP": "{:,.0f}"})
-            .background_gradient(subset=["Cycle GP"], cmap="Blues")
-            .background_gradient(subset=["ROI %"], cmap="Greens"),
+        df_bulk.style.format({
+            "Buy":         "{:,.0f}",
+            "Sell":        "{:,.0f}",
+            "Spread":      "{:,.0f}",
+            "ROI %":       "{:.2f}",
+            "GE Limit":    "{:,.0f}",
+            "Trades / hr": "{:,.0f}",
+            "Cycle GP":    "{:,.0f}",
+        }),
         use_container_width=True,
         hide_index=True,
     )
@@ -225,10 +228,13 @@ if singular:
     } for r in singular])
 
     st.dataframe(
-        df_sing.style
-            .format({"Buy": "{:,.0f}", "Sell": "{:,.0f}", "Spread": "{:,.0f}",
-                     "ROI %": "{:.2f}", "Trades / hr": "{:,.0f}"})
-            .background_gradient(subset=["Spread"], cmap="Purples"),
+        df_sing.style.format({
+            "Buy":         "{:,.0f}",
+            "Sell":        "{:,.0f}",
+            "Spread":      "{:,.0f}",
+            "ROI %":       "{:.2f}",
+            "Trades / hr": "{:,.0f}",
+        }),
         use_container_width=True,
         hide_index=True,
     )
@@ -253,36 +259,6 @@ if watch:
     } for r in watch])
 
     st.dataframe(
-        df_watch.style
-            .format({"Price": "{:,.0f}", "Buy offer": "{:,.0f}", "Spread": "{:,.0f}",
-                     "ROI %": "{:.2f}", "Trades / hr": "{:,.0f}"}),
-        use_container_width=True,
-        hide_index=True,
-    )
-
-    fig_w = px.bar(
-        df_watch, x="Item", y="Spread",
-        color="ROI %", color_continuous_scale="oranges",
-        title="Watchlist — post-tax spread per item",
-        template="plotly_dark",
-    )
-    fig_w.update_layout(
-        plot_bgcolor="#0f172a", paper_bgcolor="#0f172a",
-        font_color="#cbd5e1", title_font_size=13,
-        xaxis_tickangle=-30, margin=dict(t=45, b=80),
-    )
-    fig_w.update_traces(marker_line_width=0)
-    st.plotly_chart(fig_w, use_container_width=True)
-else:
-    st.info("No watchlist items returned in this pull.")
-
-
-# ── Footer ────────────────────────────────────────────────────────────────────
-st.markdown("---")
-st.markdown(
-    "<div style='font-size:0.7rem;color:#334155;text-align:center'>"
-    "OSRS Wiki Real-Time Prices API · 2% GE tax (5M cap) · "
-    "Trades/hr = 5-min bucket × 12 · Fills not guaranteed"
-    "</div>",
-    unsafe_allow_html=True
-)
+        df_watch.style.format({
+            "Price":       "{:,.0f}",
+        
