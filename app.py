@@ -46,6 +46,8 @@ st.markdown("""
     font-size:0.72rem !important; text-transform:uppercase; letter-spacing:0.05em;
   }
   [data-testid="stDataFrame"] td { font-size:0.82rem !important; }
+  [data-testid="stDataFrame"] [role="gridcell"] { white-space: normal !important; line-height: 1.25 !important; }
+  [data-testid="stDataFrame"] [role="columnheader"] { white-space: normal !important; }
 
   .banner-green  { background:#052e16; border:1px solid #166534; border-radius:6px; padding:0.45rem 1rem; color:#bbf7d0; font-size:0.8rem; margin-bottom:0.75rem; }
   .banner-yellow { background:#1c1700; border:1px solid #92400e; border-radius:6px; padding:0.45rem 1rem; color:#fde68a; font-size:0.8rem; margin-bottom:0.75rem; }
@@ -323,7 +325,7 @@ t_sing, t_bulk, t_roi, t_watch, t_guide = st.tabs([
 # ═══════════════════════════════════════════════════════════════════════════════
 with t_sing:
     s_n = st.selectbox("Show top", [10, 20, 30, 40], index=1, key="sing_n")
-    display_sing = sorted(singular, key=lambda x: -(x.get("profit_unit",0)*x.get("fq_mult",1)))[:s_n]
+    display_sing = sorted(singular, key=lambda x: (-x.get("profit_unit",0), -x.get("fq_mult",0), -x.get("roi",0)))[:s_n]
 
     SING_COLS = ["name","buy_price","sell_price","tax","profit_unit","roi",
                  "buy_qty_hr","sell_qty_hr","ratio","fq_label","ge_limit","potential_profit"]
@@ -520,6 +522,14 @@ with t_watch:
         st.dataframe(
             df_w_full.style.apply(style_watch, axis=1),
             use_container_width=True, hide_index=True, height=620,
+            column_config={
+                "Catalyst": st.column_config.TextColumn("Catalyst", width="large"),
+                "Item": st.column_config.TextColumn("Item", width="medium"),
+                "Trend": st.column_config.TextColumn("Trend", width="small"),
+                "1D %": st.column_config.TextColumn("1D %", width="small"),
+                "7D %": st.column_config.TextColumn("7D %", width="small"),
+                "30D %": st.column_config.TextColumn("30D %", width="small"),
+            },
         )
 
         st.markdown("<div class='section-label'>Current spread by item</div>", unsafe_allow_html=True)
