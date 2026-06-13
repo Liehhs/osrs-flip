@@ -308,7 +308,12 @@ if "data" not in st.session_state:
     st.info("Loading data…")
     st.stop()
 
-bulk, singular, high_roi, watch, radar, all_rows = st.session_state["data"]
+data_bundle = st.session_state["data"]
+if len(data_bundle) == 6:
+    bulk, singular, high_roi, watch, radar, all_rows = data_bundle
+else:
+    bulk, singular, high_roi, watch, all_rows = data_bundle
+    radar = []
 
 tw_color, tw_msg = get_timing()
 st.markdown(f"<div class='banner-{tw_color}'>{tw_msg}</div>", unsafe_allow_html=True)
@@ -536,7 +541,6 @@ with t_watch:
                 "30D %": st.column_config.TextColumn("30D %", width="small"),
             },
         )
-        st.caption("This watchlist is intentionally stable. Membership is manual and thesis-driven; only the signals update.")
 
         st.markdown("<div class='section-label'>Current profit/item by item</div>", unsafe_allow_html=True)
         fig_w = go.Figure(go.Bar(
@@ -602,58 +606,6 @@ with t_watch:
     else:
         st.info("No watchlist items found in this pull.")
 
-with t_radar:
-    if radar:
-        RADAR_COLS = ["name", "trend", "chg_1d", "chg_7d", "chg_30d", "buy_price", "sell_price", "tax", "profit_unit", "roi",
-                      "buy_qty_hr", "sell_qty_hr", "ratio", "fq_label", "ge_limit"]
-        records = []
-        for r in radar:
-            row = {COL_DEFS[k][0]: COL_DEFS[k][1](r) for k in RADAR_COLS}
-            row["Catalyst"] = UPDATE_RADAR_CATALYSTS.get(r["name"], "")
-            records.append(row)
-        df_rad = pd.DataFrame(records)
-        cols_order = ["Item", "Trend", "1D %", "7D %", "30D %", "Catalyst"] + [c for c in df_rad.columns if c not in ("Item", "Trend", "1D %", "7D %", "30D %", "Catalyst")]
-        df_rad = df_rad[cols_order]
-        def style_radar(row):
-            idx = row.name
-            if idx >= len(radar):
-                return [""] * len(df_rad.columns)
-            r = radar[idx]
-            result = []
-            for col in df_rad.columns:
-                if col == "Trend":
-                    result.append(trend_css(r.get("trend", "Flat")))
-                elif col == "1D %":
-                    result.append(pct_css(r.get("chg_1d")))
-                elif col == "7D %":
-                    result.append(pct_css(r.get("chg_7d")))
-                elif col == "30D %":
-                    result.append(pct_css(r.get("chg_30d")))
-                elif col == "Profit/item":
-                    result.append("background:#052e16; color:#4ade80; font-weight:600" if r.get("profit_unit", 0) >= max(x.get("profit_unit", 0) for x in radar) * 0.6 else "")
-                elif col == "B/S":
-                    result.append(ratio_css(r.get("ratio")))
-                elif col == "Fill":
-                    result.append(fq_css(r.get("fq_label", "No data")))
-                else:
-                    result.append("")
-            return result
-        st.dataframe(
-            df_rad.style.apply(style_radar, axis=1),
-            use_container_width=True, hide_index=True, height=520,
-            column_config={
-                "Catalyst": st.column_config.TextColumn("Catalyst", width="large"),
-                "Item": st.column_config.TextColumn("Item", width="medium"),
-                "Trend": st.column_config.TextColumn("Trend", width="small"),
-                "1D %": st.column_config.TextColumn("1D %", width="small"),
-                "7D %": st.column_config.TextColumn("7D %", width="small"),
-                "30D %": st.column_config.TextColumn("30D %", width="small"),
-            },
-        )
-        st.caption("Update Radar is intentionally dynamic. It surfaces rotating names reacting to momentum, spread, liquidity, and update sentiment.")
-    else:
-        st.info("No update-radar items found in this pull.")
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 5 — GUIDE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -709,7 +661,6 @@ with t_guide:
 
         st.markdown("### Sorting note")
         st.markdown("""
-- Investment Watchlist is a stable manual universe; Update Radar is the rotating idea layer
 - Tables are pre-ranked by dashboard logic for each tab
 - Use the default ranking rather than clicking column headers for decision-making
 - This preserves readable GP/K/M formatting and avoids Streamlit type-parsing issues
