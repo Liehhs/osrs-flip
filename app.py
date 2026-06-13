@@ -7,6 +7,15 @@ from ge_api import fetch_latest, fetch_mapping, fetch_5m, compute_flips, WATCHLI
 
 st.set_page_config(page_title="OSRS Flip Dashboard", layout="wide", page_icon="📈")
 
+# Force clear stale cache if keys from an old version are present
+if "data" in st.session_state:
+    try:
+        bulk_check = st.session_state["data"][0]
+        if bulk_check and "adjusted_profit" not in bulk_check[0]:
+            del st.session_state["data"]
+    except Exception:
+        del st.session_state["data"]
+
 st.markdown("""
 <style>
   html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif; }
@@ -61,44 +70,42 @@ def get_timing():
         return "red",    f"🔴  Buy window — Off-peak. Place buy offers now, sell into the afternoon. ({ts})"
 
 def ratio_str(r):
-    """Color-coded ratio display. ~1.0 = ideal, extremes = warnings."""
     if r is None: return "— no data"
-    if 0.8 <= r <= 1.5:   return f"✅ {r:.2f}"
-    elif 1.5 < r <= 3.0:  return f"🔼 {r:.2f}"
-    elif r > 3.0:          return f"🔴 {r:.2f}"
-    elif 0.4 <= r < 0.8:  return f"🟡 {r:.2f}"
-    else:                  return f"🔴 {r:.2f}"
+    if 0.8 <= r <= 1.5:  return f"✅ {r:.2f}"
+    elif 1.5 < r <= 3.0: return f"🔼 {r:.2f}"
+    elif r > 3.0:         return f"🔴 {r:.2f}"
+    elif 0.4 <= r < 0.8: return f"🟡 {r:.2f}"
+    else:                 return f"🔴 {r:.2f}"
 
-def fq_str(label, mult):
-    icons = {
+def fq_str(label):
+    return {
         "Ideal":        "✅ Ideal",
         "High demand":  "🔼 High demand",
         "Hard to buy":  "🔴 Hard to buy",
         "Slight flood": "🟡 Slight flood",
         "Flooded":      "🔴 Flooded",
         "No data":      "— No data",
-    }
-    return icons.get(label, label)
+    }.get(label, label)
 
 def to_df(rows, include_window=False):
     out = []
     for r in rows:
         row = {
-            "Item":             r["name"],
-            "Offer Price":      r["offer_price"],
-            "Sell Price":       r["sell_price"],
-            "Tax (gp)":         r["tax"],
-            "Profit / unit":    r["profit_unit"],
-            "ROI %":            round(r["roi"], 2),
-            "Buy Qty / hr":     r["buy_qty_hr"],
-            "Sell Qty / hr":    r["sell_qty_hr"],
-            "B/S Ratio":        ratio_str(r["ratio"]),
-            "Fill Quality":     fq_str(r["fq_label"], r["fq_mult"]),
-            "GE Limit":         r["ge_limit"],
+            "Item":          r.get("name", ""),
+            "Offer Price":   r.get("offer_price", 0),
+            "Sell Price":    r.get("sell_price", 0),
+            "Tax (gp)":      r.get("tax", 0),
+            "Profit / unit": r.get("profit_unit", 0),
+            "ROI %":         round(r.get("roi", 0), 2),
+            "Buy Qty / hr":  r.get("buy_qty_hr", 0),
+            "Sell Qty / hr": r.get("sell_qty_hr", 0),
+            "B/S Ratio":     ratio_str(r.get("ratio")),
+            "Fill Quality":  fq_str(r.get("fq_label", "No data")),
+            "GE Limit":      r.get("ge_limit", 0),
         }
         if include_window:
-            row["4hr Window Profit"] = r["window_profit"]
-            row["Adj. Profit"]       = r["adjusted_profit"]
+            row["4hr Window Profit"] = r.get("window_profit", 0)
+            row["Adj. Profit"]       = r.get("adjusted_profit", 0)
         out.append(row)
     return pd.DataFrame(out)
 
@@ -136,10 +143,10 @@ with st.sidebar:
         "<b>B/S Ratio = buy qty ÷ sell qty</b><br>"
         "✅ 0.8–1.5 → Ideal (balanced fills)<br>"
         "🔼 1.5–3.0 → High demand (slow to buy in)<br>"
-        "🔴 &gt;3.0 → Hard to buy (buy offer sits)<br>"
-        "🟡 0.4–0.8 → Slight flood (harder to sell)<br>"
-        "🔴 &lt;0.4 → Flooded (selling is painful)<br><br>"
-        "Ranked by <b>Adj. Profit</b> = 4hr window × fill quality multiplier<br><br>"
+        "🔴 &gt;3.0 → Hard to buy<br>"
+        "🟡 0.4–0.8 → Slight flood<br>"
+        "🔴 &lt;0.4 → Flooded market<br><br>"
+        "Ranked by <b>Adj. Profit</b> = 4hr window × fill quality<br><br>"
         "Tax: 2% on seller · 5M GP hard cap<br>"
         "Trades/hr = 5-min bucket × 12"
         "</div>", unsafe_allow_html=True
@@ -186,11 +193,23 @@ bulk, singular, watch = st.session_state["data"]
 
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Best Bulk — Adj. Profit",   fmt_gp(bulk[0]["adjusted_profit"]) if bulk else "—",   bulk[0]["name"] if bulk else "")
-k2.metric("Best Bulk — ROI",           f"{bulk[0]['roi']:.2f}%" if bulk else "—",             f"{fmt_gp(bulk[0]['profit_unit'])} / unit" if bulk else "")
-k3.metric("Best Singular — Profit",    fmt_gp(singular[0]["profit_unit"]) if singular else "—", singular[0]["name"] if singular else "")
-k4.metric("Watchlist Items Found",     str(len(watch)),                                        f"of {len(WATCHLIST_NAMES)} tracked")
-k5.metric("Cash Stack",                f"{cash_m:,.1f}M GP",                                   f"{cash_stack_gp:,} GP")
+k1.metric(
+    "Best Bulk — Adj. Profit",
+    fmt_gp(bulk[0].get("adjusted_profit")) if bulk else "—",
+    bulk[0].get("name", "") if bulk else ""
+)
+k2.metric(
+    "Best Bulk — ROI",
+    f"{bulk[0].get('roi', 0):.2f}%" if bulk else "—",
+    f"{fmt_gp(bulk[0].get('profit_unit'))} / unit" if bulk else ""
+)
+k3.metric(
+    "Best Singular — Profit",
+    fmt_gp(singular[0].get("profit_unit")) if singular else "—",
+    singular[0].get("name", "") if singular else ""
+)
+k4.metric("Watchlist Items Found", str(len(watch)), f"of {len(WATCHLIST_NAMES)} tracked")
+k5.metric("Cash Stack", f"{cash_m:,.1f}M GP", f"{cash_stack_gp:,} GP")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -200,23 +219,20 @@ with st.expander("📖  B/S Ratio & Fill Quality guide", expanded=False):
     st.markdown("""
 | B/S Ratio | Label | What it means | Action |
 |---|---|---|---|
-| ✅ 0.8 – 1.5 | **Ideal** | Balanced market — both sides fill predictably | Best candidates |
-| 🔼 1.5 – 3.0 | **High demand** | More buyers than sellers — item sells fast but buy offers may sit | OK — factor in wait time |
-| 🔴 > 3.0 | **Hard to buy** | Extreme demand spike — buy offers will sit a long time | Avoid unless patient |
-| 🟡 0.4 – 0.8 | **Slight flood** | More sellers than buyers — sells slower, price may drift down | Proceed with caution |
-| 🔴 < 0.4 | **Flooded** | Market dumped — very hard to sell at your listed price | Avoid |
+| ✅ 0.8 – 1.5 | **Ideal** | Balanced — both sides fill predictably | Best candidates |
+| 🔼 1.5 – 3.0 | **High demand** | More buyers than sellers — sells fast, buy offers sit | OK, factor in wait |
+| 🔴 > 3.0 | **Hard to buy** | Extreme demand — buy offers sit a very long time | Avoid unless patient |
+| 🟡 0.4 – 0.8 | **Slight flood** | More sellers — sells slower, price may drift down | Caution |
+| 🔴 < 0.4 | **Flooded** | Market dumped — very hard to sell | Avoid |
 
-**Adj. Profit** = 4-hour window profit × fill quality multiplier. Items ranked by this — not raw profit — so a high-spread item in a flooded market ranks below a moderate-spread item with balanced fills.
+**Adj. Profit** = 4hr window profit × fill quality multiplier. Items ranked by this so flooded or hard-to-buy items don't falsely top the list.
     """)
 
 
 # ── Bulk flips ────────────────────────────────────────────────────────────────
 st.markdown("<div class='section-label'>Recommended bulk flips — herbs, pots, runes, supplies</div>", unsafe_allow_html=True)
 st.markdown(
-    "<div class='note'>"
-    "GE limit ≥1,000 · ≥300 trades/hr · ranked by <b>Adj. Profit</b> "
-    "(4hr window profit × fill quality multiplier) — not raw spread"
-    "</div>",
+    "<div class='note'>GE limit ≥1,000 · ≥300 trades/hr · ranked by <b>Adj. Profit</b> (4hr window × fill quality)</div>",
     unsafe_allow_html=True
 )
 
@@ -246,9 +262,7 @@ else:
 # ── Singular flips ────────────────────────────────────────────────────────────
 st.markdown("<div class='section-label'>Best singular flips — low limit, high profit per unit</div>", unsafe_allow_html=True)
 st.markdown(
-    "<div class='note'>"
-    "GE limit ≤15 · price >500K GP · ranked by demand-adjusted profit per unit · slow fills expected"
-    "</div>",
+    "<div class='note'>GE limit ≤15 · price >500K GP · ranked by demand-adjusted profit per unit</div>",
     unsafe_allow_html=True
 )
 
@@ -265,9 +279,7 @@ else:
 # ── Watchlist ─────────────────────────────────────────────────────────────────
 st.markdown("<div class='section-label'>Investment watchlist — live snapshot</div>", unsafe_allow_html=True)
 st.markdown(
-    "<div class='note'>"
-    "Tumeken's Shadow · Twisted Bow · Torva · Bandos · Armadyl · Scythe · Soulreaper Axe"
-    "</div>",
+    "<div class='note'>Tumeken's Shadow · Twisted Bow · Torva · Bandos · Armadyl · Scythe · Soulreaper Axe</div>",
     unsafe_allow_html=True
 )
 
