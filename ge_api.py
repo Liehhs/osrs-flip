@@ -191,11 +191,36 @@ def enrich_watchlist_with_trends(watch_rows):
         enriched.append(item)
     return enriched
 
+def is_viable_bulk(r):
+    buy_hr  = r.get("buy_qty_hr", 0) or 0
+    sell_hr = r.get("sell_qty_hr", 0) or 0
+    ratio   = r.get("ratio")
+    ge      = r.get("ge_limit", 0) or 0
+    profit  = r.get("profit_unit", 0) or 0
+
+    # Needs actual two-sided market activity.
+    if buy_hr < 100 or sell_hr < 50:
+        return False
+
+    # Ratio can't be absurdly one-sided if we want a realistic bulk flip.
+    if ratio is None or ratio < 0.5 or ratio > 3.0:
+        return False
+
+    # Must be able to move at least a meaningful chunk of the GE limit in 4 hours.
+    if min(ge, sell_hr * 4) < max(100, ge * 0.05):
+        return False
+
+    # Avoid ultra-thin high-spread nonsense.
+    if profit <= 0:
+        return False
+
+    return True
+
 def compute_flips(latest, mapping, hour_vols, fmin_vols):
     rows = build_rows(latest, mapping, hour_vols, fmin_vols)
     bulk = sorted(
-        [r for r in rows if r["ge_limit"] >= 1000 and r["total_hr"] >= 200],
-        key=lambda x: -x["adj_potential"]
+        [r for r in rows if r["ge_limit"] >= 1000 and r["total_hr"] >= 200 and is_viable_bulk(r)],
+        key=lambda x: (-x["profit_unit"], -x["fq_mult"], -x["ge_limit"], -x["roi"])
     )[:60]
     singular = sorted(
         [r for r in rows if r["ge_limit"] <= 15 and r["sell_price"] >= 500_000 and r["total_hr"] >= 1],

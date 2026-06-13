@@ -365,7 +365,7 @@ with t_bulk:
     st.dataframe(make_styler(df_b, display_bulk, BULK_COLS),
                  use_container_width=True, hide_index=True, height=560)
 
-    st.caption("Bulk tab focus: profit/item first, then B/S quality, then GE limit. Realistic 4hr is the most practical column here.")
+    st.caption("Bulk tab only includes items with two-sided hourly liquidity, sane B/S, and enough sell-side activity to realistically move size inside the 4-hour GE window.")
 
     st.markdown("<div class='section-label'>Best bulk candidates — ranked by profit/item first, then fill quality</div>", unsafe_allow_html=True)
     if display_bulk:
@@ -621,7 +621,7 @@ with t_guide:
 | GE Lmt | Buy limit per 4-hour window |
 | Pot. Profit | Profit/unit × full GE limit |
 | Adj. Potential | Pot. Profit × fill quality multiplier |
-| Realistic 4hr | Profit × min(GE limit, sell-side fills × 4) |
+| Realistic 4hr | Profit × min(GE limit, sell-side fills × 4); bulk tab also excludes thin or one-sided markets |
         """)
 
         st.markdown("### B/S Ratio")
