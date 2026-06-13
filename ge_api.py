@@ -114,6 +114,7 @@ WATCHLIST_NAMES     = [w[0] for w in WATCHLIST]
 WATCHLIST_CATALYSTS = {w[0]: w[2] for w in WATCHLIST}
 WATCHLIST_CATEGORY  = {w[0]: w[1] for w in WATCHLIST}
 
+
 # Signals Universe -- TYPE | STATUS | REASON
 SIGNALS_UNIVERSE = {
     # ---- ACTIVE: Blood Moon Rises (June 30, 2026) ----

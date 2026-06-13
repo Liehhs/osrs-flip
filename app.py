@@ -461,26 +461,50 @@ def render_shifts_section(section_title, ht_rows, bulk_rows,
 
 
 # -- Watchlist renderer -------------------------------------------------------
-CLUE_CATS = {"Prestige"}
+RAID_CATS  = {"CoX", "ToB", "ToA", "Nightmare", "Raids/FA"}
+BOSS_CATS  = {"Nex", "DT2", "GWD", "Zulrah", "Cerberus", "Dagannoth",
+              "Varlamore", "Specialist", "Accessories"}
+CLUE_CATS  = {"Clue"}
+MIN_PRICE  = 1_000_000  # 1M floor
 
-def render_watchlist(watch):
-    if not watch:
-        st.info("No watchlist data.")
-        return
+def _tracker_card(label, rows):
+    """Render a rolling 7D aggregate tracker card for a group of items."""
+    total_now  = sum(r.get("sell_price") or 0 for r in rows if (r.get("sell_price") or 0) >= MIN_PRICE)
+    total_prev = sum((r.get("sell_price") or 0) / (1 + (r.get("chg_7d") or 0) / 100)
+                     for r in rows if (r.get("sell_price") or 0) >= MIN_PRICE and r.get("chg_7d") is not None)
+    if total_prev > 0:
+        pct   = (total_now - total_prev) / total_prev * 100
+        delta = total_now - total_prev
+        sign  = "+" if pct >= 0 else ""
+        d_sign = "+" if delta >= 0 else ""
+        pct_str   = f"{sign}{pct:.2f}%"
+        delta_str = f"({d_sign}{fmt_gp(int(delta))})"
+        color = "#4ade80" if pct >= 0 else "#f87171"
+        value_html = (
+            f"<span style='font-size:1.15rem; font-weight:700; color:{color};'>"
+            f"{pct_str}</span>&nbsp;"
+            f"<span style='font-size:.85rem; color:#94a3b8;'>{delta_str}</span>"
+        )
+    else:
+        value_html = "<span style='color:#64748b'>No data</span>"
 
-    boss_items = [r for r in watch if r.get("category", "") not in CLUE_CATS]
-    clue_items = [r for r in watch if r.get("category", "") in CLUE_CATS]
-
-    st.markdown("<div class='section-header'>Boss & Raid Uniques</div>", unsafe_allow_html=True)
-    if boss_items:
-        _show_watchlist_table(boss_items)
-
-    st.markdown("<div class='section-header'>High-Ticket Clue Items</div>", unsafe_allow_html=True)
-    st.caption("Ultra-rare clue rewards and high-demand cosmetic drops. Supply is fixed -- price driven entirely by demand.")
-    if clue_items:
-        _show_watchlist_table(clue_items)
+    st.markdown(
+        f"<div style='background:#1e293b; border:1px solid #334155; border-radius:8px;"
+        f"padding:12px 16px; height:100%;'>"
+        f"<div style='font-size:.72rem; font-weight:700; letter-spacing:.09em;"
+        f"text-transform:uppercase; color:#64748b; margin-bottom:6px;'>{label}</div>"
+        f"<div>{value_html}</div>"
+        f"<div style='font-size:.68rem; color:#475569; margin-top:4px;'>"
+        f"Aggregate of {len([r for r in rows if (r.get('sell_price') or 0) >= MIN_PRICE])} tracked items</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 def _show_watchlist_table(rows):
+    filtered = [r for r in rows if (r.get("sell_price") or 0) >= MIN_PRICE]
+    if not filtered:
+        st.caption("No items at or above 1M currently.")
+        return
     df = pd.DataFrame([{
         "Item":   r.get("name", "--"),
         "Source": r.get("category", "--"),
@@ -491,15 +515,12 @@ def _show_watchlist_table(rows):
         "Trend":  r.get("trend", "Flat"),
         "Price":  fmt_gp(r.get("sell_price")),
         "B/S":    ratio_fmt(r.get("ratio")),
-        "Note":   r.get("catalyst", ""),
-    } for r in rows])
-
+    } for r in filtered])
     cols = list(df.columns)
-
     def style_wl(row):
         idx = row.name
-        if idx >= len(rows): return [""] * len(cols)
-        r = rows[idx]
+        if idx >= len(filtered): return [""] * len(cols)
+        r = filtered[idx]
         result = []
         for col in cols:
             if col in ("1D %", "7D %", "14D %", "30D %"):
@@ -515,10 +536,44 @@ def _show_watchlist_table(rows):
             else:
                 result.append("")
         return result
-
-    height = min(60 + len(rows) * 36, 620)
+    height = min(60 + len(filtered) * 36, 640)
     st.dataframe(df.style.apply(style_wl, axis=1),
                  use_container_width=True, hide_index=True, height=height)
+
+def render_watchlist(watch):
+    if not watch:
+        st.info("No watchlist data.")
+        return
+
+    raid_items = [r for r in watch if r.get("category", "") in RAID_CATS]
+    boss_items = [r for r in watch if r.get("category", "") in BOSS_CATS]
+    clue_items = [r for r in watch if r.get("category", "") in CLUE_CATS]
+
+    # -- 3 aggregate tracker cards --
+    render_trend_legend()
+    st.markdown("<div class='section-header'>7-Day Aggregate Trackers</div>",
+                unsafe_allow_html=True)
+    st.caption(
+        "Rolling 7D change across all 1M+ items in each category. "
+        "Rising = players are farming that content more. Falling = less activity or oversupply."
+    )
+    c1, c2, c3 = st.columns(3, gap="medium")
+    with c1: _tracker_card("Raid Uniques", raid_items)
+    with c2: _tracker_card("Boss Uniques", boss_items)
+    with c3: _tracker_card("Clue Uniques", clue_items)
+    st.markdown("<div style='margin-top:1.5rem'></div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='section-header'>Raid Uniques</div>", unsafe_allow_html=True)
+    st.caption("CoX / ToB / ToA / Nightmare / Raids/FA -- multi-mechanic raid drops.")
+    _show_watchlist_table(raid_items)
+
+    st.markdown("<div class='section-header'>Boss Uniques</div>", unsafe_allow_html=True)
+    st.caption("Nex, DT2, GWD, Zulrah, Cerberus, Dagannoth, Varlamore, and other single-boss drops.")
+    _show_watchlist_table(boss_items)
+
+    st.markdown("<div class='section-header'>Clue Uniques</div>", unsafe_allow_html=True)
+    st.caption("High-ticket clue scroll rewards. Fixed supply -- price driven entirely by demand.")
+    _show_watchlist_table(clue_items)
 
 
 # -- Signals renderer ---------------------------------------------------------
@@ -776,12 +831,6 @@ with tab_shifts:
 
 # -- Watchlist tab ------------------------------------------------------------
 with tab_watch:
-    render_trend_legend()
-    st.caption(
-        "All high-ticket boss uniques, raid drops, and clue rewards. "
-        "Source column shows boss/raid/content origin. "
-        "Note column gives current market context. Sorted by trend activity."
-    )
     render_watchlist(watch)
 
 # -- Signals tab --------------------------------------------------------------
