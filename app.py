@@ -450,8 +450,9 @@ with t_watch:
         with f1:
             trend_filter = st.selectbox("Trend filter", ["All", "Pullback", "Building", "Extended", "Flat", "Weakening"], index=0, key="watch_trend")
         display_watch = [r for r in watch if trend_filter == "All" or r.get("trend") == trend_filter]
-        display_watch = sorted(display_watch, key=lambda r: (trend_order.get(r.get("trend", "Flat"), 9), -(r.get("chg_30d") or -999)))
-
+        display_watch = sorted(display_watch, key=lambda r: (trend_order.get(r.get("trend", "Flat"), 9), -r.get("profit_unit", 0), -(r.get("chg_30d") or 0)
+    ),
+)
         WATCH_COLS = ["name", "trend", "chg_1d", "chg_7d", "chg_30d", "buy_price", "sell_price", "tax", "profit_unit", "roi",
                       "buy_qty_hr", "sell_qty_hr", "ratio", "fq_label", "ge_limit"]
         records = []
