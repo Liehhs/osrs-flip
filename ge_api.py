@@ -11,57 +11,54 @@ WATCHLIST_NAMES = [
     "Armadyl chainskirt", "Scythe of vitur", "Soulreaper axe"
 ]
 
+# Bulk = genuinely high-volume consumables and supplies.
+# GE limit >= 1000 AND estimated trades/hr >= 500.
+BULK_MIN_LIMIT = 1000
+BULK_MIN_HOURLY = 500
 
-def fetch_latest():
-    r = requests.get(f"{BASE}/latest", headers=HEADERS, timeout=10)
-    r.raise_for_status()
-    return r.json().get("data", {})
+# Singular = expensive slow items with a fat spread.
+SINGULAR_MAX_LIMIT = 15
+SINGULAR_MIN_PRICE = 500_000
 
 
-def fetch_mapping():
-    r = requests.get(f"{BASE}/mapping", headers=HEADERS, timeout=10)
+def _get(path, timeout=12):
+    r = requests.get(f"{BASE}{path}", headers=HEADERS, timeout=timeout)
     r.raise_for_status()
     return r.json()
 
 
+def fetch_latest():
+    data = _get("/latest")
+    return data.get("data") or {}
+
+
+def fetch_mapping():
+    return _get("/mapping") or []
+
+
 def fetch_5m():
-    """5-minute bucket — gives highPriceVolume and lowPriceVolume as real trade counts."""
-    r = requests.get(f"{BASE}/5m", headers=HEADERS, timeout=10)
-    r.raise_for_status()
-    return r.json().get("data", {})
+    data = _get("/5m")
+    return data.get("data") or {}
 
 
-def tax_on_sell(price: int) -> int:
+def tax_on_sell(price):
     if price < 50:
         return 0
     return int(min(price * GE_TAX_RATE, GE_TAX_CAP))
 
 
-def _vol_from_bucket(bucket) -> int:
-    """Safely extract total trade count from a 5m bucket regardless of shape."""
-    if bucket is None:
+def _vol_5m(bucket):
+    if not bucket:
         return 0
     if isinstance(bucket, dict):
-        high = bucket.get("highPriceVolume") or 0
-        low = bucket.get("lowPriceVolume") or 0
-        return int(high) + int(low)
+        return int(bucket.get("highPriceVolume") or 0) + int(bucket.get("lowPriceVolume") or 0)
     try:
         return int(bucket)
     except (TypeError, ValueError):
         return 0
 
 
-def compute_flips(latest, mapping, fivemin, cash_stack_gp: int, bulk_min_limit: int, min_volume_5m: int):
-    """
-    Score every tradeable item and return:
-      bulk     — high GE limit items ranked by realistic cycle GP
-      singular — low limit (≤15) expensive items ranked by post-tax spread
-      watch    — WATCHLIST_NAMES snapshots
-
-    Liquidity gate: items must have at least `min_volume_5m` combined trades
-    in the last 5-minute bucket before they are ranked. This kills illiquid
-    noise (e.g. Unstrung comp bow with 0 buys/hour) regardless of spread size.
-    """
+def compute_flips(latest, mapping, fivemin, cash_stack_gp):
     mapping_by_id = {item["id"]: item for item in mapping}
     rows = []
 
@@ -81,58 +78,52 @@ def compute_flips(latest, mapping, fivemin, cash_stack_gp: int, bulk_min_limit: 
             continue
 
         roi = (margin / buy) * 100
-
-        # 5-minute real trade velocity
-        bucket = fivemin.get(id_str)
-        vol_5m = _vol_from_bucket(bucket)
-        # Estimated trades per hour (12 × 5-min buckets)
+        vol_5m = _vol_5m(fivemin.get(id_str))
         vol_per_hour = vol_5m * 12
 
-        # How many units we can actually afford per cycle
         affordable = max(1, cash_stack_gp // buy)
-        # Cap by GE limit — don't promise more than the limit allows
         effective_limit = min(limit, affordable)
-
-        # Realistic cycle GP = margin × min(effective_limit, estimated hourly fills)
-        # Prevents illiquid items from showing fantasy cycle numbers
         realistic_fills = min(effective_limit, max(1, vol_per_hour // 2))
         cycle_gp = margin * realistic_fills
 
         rows.append({
-            "id": int(id_str),
-            "name": item["name"],
-            "buy": buy,
-            "sell": sell,
-            "margin": margin,
-            "roi": roi,
-            "limit": limit,
-            "vol_5m": vol_5m,
-            "vol_per_hour": vol_per_hour,
+            "id":             int(id_str),
+            "name":           item["name"],
+            "buy":            buy,
+            "sell":           sell,
+            "margin":         margin,
+            "roi":            roi,
+            "limit":          limit,
+            "vol_5m":         vol_5m,
+            "vol_per_hour":   vol_per_hour,
             "effective_limit": effective_limit,
-            "cycle_gp": cycle_gp,
-            "tax_cap": tax == GE_TAX_CAP,
+            "cycle_gp":       cycle_gp,
+            "tax_cap":        tax == GE_TAX_CAP,
         })
 
-    # ── Bulk flips ────────────────────────────────────────────────────────────
-    # High limit items with real liquidity, sorted by realistic cycle GP
+    # Bulk: high limit + genuinely liquid (herbs, pots, runes, supplies)
     bulk = sorted(
         [r for r in rows
-         if r["limit"] >= bulk_min_limit
-         and r["vol_5m"] >= min_volume_5m],
+         if r["limit"] >= BULK_MIN_LIMIT
+         and r["vol_per_hour"] >= BULK_MIN_HOURLY],
         key=lambda x: -x["cycle_gp"]
-    )[:25]
+    )[:30]
 
-    # ── Singular flips ────────────────────────────────────────────────────────
-    # Low limit (≤15), price >500k, some real liquidity
+    # Singular: low limit, expensive, any real recent activity
     singular = sorted(
         [r for r in rows
-         if r["limit"] <= 15
-         and r["sell"] > 500_000
+         if r["limit"] <= SINGULAR_MAX_LIMIT
+         and r["sell"] >= SINGULAR_MIN_PRICE
          and r["vol_5m"] >= 1],
         key=lambda x: -x["margin"]
     )[:25]
 
-    # ── Watchlist ─────────────────────────────────────────────────────────────
-    # Use full rows (no liquidity filter) so watchlist items always appear
-    all_by_name_full = {r["name"].lower(): r for r in rows}
-    watch = [all_by_name_full[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name_full]
+    # Watchlist: always pull from full rows regardless of filters
+    all_by_name = {r["name"].lower(): r for r in rows}
+    watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
+
+    return bulk, singular, watch
+PYEOF
+
+echo "ge_api.py done"
+ge_api.py done
