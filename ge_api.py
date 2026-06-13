@@ -123,7 +123,3 @@ def compute_flips(latest, mapping, fivemin, cash_stack_gp):
     watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
 
     return bulk, singular, watch
-PYEOF
-
-echo "ge_api.py done"
-ge_api.py done

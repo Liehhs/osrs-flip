@@ -286,7 +286,3 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True
 )
-PYEOF
-
-echo "app.py done"
-app.py done
