@@ -929,7 +929,7 @@ _cmap = {"green": "#22c55e", "yellow": "#facc15", "red": "#ef4444"}
 _p_ago_hdr = fmt_ago(secs_ago(st.session_state.get("price_ts")))
 _v_ago_hdr = fmt_ago(secs_ago(st.session_state.get("volume_ts")))
 
-_hdr_col, _btn_col = st.columns([11, 1])
+_hdr_col, _btn_col = st.columns([8, 1])
 with _hdr_col:
     st.markdown(
         f"""<div style='display:flex; align-items:center; gap:14px; flex-wrap:nowrap;
