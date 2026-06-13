@@ -1,9 +1,9 @@
 import requests
 
-BASE = "https://prices.runescape.wiki/api/v1/osrs"
+BASE    = "https://prices.runescape.wiki/api/v1/osrs"
 HEADERS = {"User-Agent": "OsrsFlipDashboard/Owen"}
-GE_TAX_RATE = 0.02
-GE_TAX_CAP  = 5_000_000
+TAX_RATE = 0.02
+TAX_CAP  = 5_000_000
 
 WATCHLIST_NAMES = [
     "Tumeken's shadow", "Twisted bow", "Torva platebody", "Torva platelegs",
@@ -11,13 +11,8 @@ WATCHLIST_NAMES = [
     "Armadyl chainskirt", "Scythe of vitur", "Soulreaper axe",
 ]
 
-BULK_MIN_LIMIT     = 1000
-BULK_MIN_HOURLY    = 300
-SINGULAR_MAX_LIMIT = 15
-SINGULAR_MIN_PRICE = 500_000
 
-
-def _get(path, timeout=12):
+def _get(path, timeout=14):
     r = requests.get(f"{BASE}{path}", headers=HEADERS, timeout=timeout)
     r.raise_for_status()
     return r.json()
@@ -31,52 +26,41 @@ def fetch_mapping():
 def fetch_5m():
     return (_get("/5m") or {}).get("data") or {}
 
-def tax_on_sell(price):
+def fetch_timeseries(item_id, timestep="24h"):
+    try:
+        data = _get(f"/timeseries?timestep={timestep}&id={item_id}")
+        return data.get("data") or []
+    except Exception:
+        return []
+
+def tax(price):
     if price < 50:
         return 0
-    return int(min(price * GE_TAX_RATE, GE_TAX_CAP))
+    return int(min(price * TAX_RATE, TAX_CAP))
 
 def _vols(bucket):
-    """Return (high_vol_5m, low_vol_5m) safely from a 5m bucket."""
     if not bucket:
         return 0, 0
     if isinstance(bucket, dict):
-        return (int(bucket.get("highPriceVolume") or 0),
-                int(bucket.get("lowPriceVolume")  or 0))
+        return int(bucket.get("highPriceVolume") or 0), int(bucket.get("lowPriceVolume") or 0)
     try:
         v = int(bucket)
         return v // 2, v // 2
     except (TypeError, ValueError):
         return 0, 0
 
-
-def fill_quality_multiplier(ratio):
-    """
-    Demand-adjusted fill quality score based on B/S ratio.
-    ratio = buy_qty_hr / sell_qty_hr
-
-    ~1.0 is ideal (balanced, both sides fill predictably).
-    Too high = hard to buy in (demand spike, buy offers sit).
-    Too low  = flooded market, hard to sell out.
-
-    Returns a multiplier 0.0–1.0 applied to window_profit for ranking.
-    Also returns a label for display.
-    """
+def fill_quality(ratio):
     if ratio is None:
         return 0.3, "No data"
-    if 0.8 <= ratio <= 1.5:
-        return 1.0, "Ideal"
-    elif 1.5 < ratio <= 3.0:
-        return 0.7, "High demand"
-    elif ratio > 3.0:
-        return 0.4, "Hard to buy"
-    elif 0.4 <= ratio < 0.8:
-        return 0.8, "Slight flood"
-    else:  # < 0.4
-        return 0.5, "Flooded"
+    if 0.8 <= ratio <= 1.5:   return 1.0, "Ideal"
+    elif 1.5 < ratio <= 3.0:  return 0.7, "High demand"
+    elif ratio > 3.0:          return 0.4, "Hard to buy"
+    elif 0.4 <= ratio < 0.8:  return 0.8, "Slight flood"
+    else:                      return 0.5, "Flooded"
 
 
-def compute_flips(latest, mapping, fivemin, cash_stack_gp):
+def build_rows(latest, mapping, fivemin):
+    """Build all scored rows — no cash stack filter applied."""
     mapping_by_id = {item["id"]: item for item in mapping}
     rows = []
 
@@ -85,78 +69,91 @@ def compute_flips(latest, mapping, fivemin, cash_stack_gp):
         if not item:
             continue
 
-        offer_price = quote.get("low")  or 0
-        sell_price  = quote.get("high") or 0
-        ge_limit    = item.get("limit") or 0
+        buy_price  = quote.get("low")  or 0
+        sell_price = quote.get("high") or 0
+        ge_limit   = item.get("limit") or 0
 
-        if not offer_price or not sell_price or not ge_limit or sell_price <= offer_price:
+        if not buy_price or not sell_price or not ge_limit or sell_price <= buy_price:
             continue
 
-        tax         = tax_on_sell(sell_price)
-        profit_unit = sell_price - offer_price - tax
+        item_tax    = tax(sell_price)
+        profit_unit = sell_price - buy_price - item_tax
         if profit_unit <= 0:
             continue
 
-        roi = (profit_unit / offer_price) * 100
+        roi = (profit_unit / buy_price) * 100
 
         high_5m, low_5m = _vols(fivemin.get(id_str))
-        buy_qty_hr  = high_5m * 12   # buyers/hr (instabuy volume)
-        sell_qty_hr = low_5m  * 12   # sellers/hr (instasell volume)
+        buy_qty_hr  = high_5m * 12
+        sell_qty_hr = low_5m  * 12
         total_hr    = buy_qty_hr + sell_qty_hr
 
         ratio = round(buy_qty_hr / sell_qty_hr, 2) if sell_qty_hr > 0 else None
+        fq_mult, fq_label = fill_quality(ratio)
 
-        fq_mult, fq_label = fill_quality_multiplier(ratio)
+        # Potential profit = full GE limit (raw, no cash cap)
+        potential_profit = profit_unit * ge_limit
 
-        # 4-hour window potential
-        affordable    = max(1, cash_stack_gp // offer_price)
-        fills_4hr     = max(1, sell_qty_hr * 4)
-        cycle_units   = min(ge_limit, affordable, fills_4hr)
-        window_profit = profit_unit * cycle_units
+        # Demand-adjusted potential profit (for ranking)
+        adj_potential = potential_profit * fq_mult
 
-        # Demand-adjusted score — this is what we rank on
-        adjusted_profit = window_profit * fq_mult
+        # Realistic 4hr fills based on sell-side liquidity only
+        fills_4hr     = sell_qty_hr * 4
+        realistic_units = min(ge_limit, max(1, fills_4hr)) if fills_4hr > 0 else ge_limit
+        realistic_profit = profit_unit * realistic_units
 
         rows.append({
-            "name":            item["name"],
-            "current_price":   sell_price,
-            "offer_price":     offer_price,
-            "sell_price":      sell_price,
-            "tax":             tax,
-            "profit_unit":     profit_unit,
-            "roi":             roi,
-            "buy_qty_hr":      buy_qty_hr,
-            "sell_qty_hr":     sell_qty_hr,
-            "total_hr":        total_hr,
-            "ratio":           ratio,
-            "fq_label":        fq_label,
-            "fq_mult":         fq_mult,
-            "ge_limit":        ge_limit,
-            "cycle_units":     cycle_units,
-            "window_profit":   window_profit,
-            "adjusted_profit": adjusted_profit,
-            "tax_cap":         tax == GE_TAX_CAP,
+            "id":               int(id_str),
+            "name":             item["name"],
+            "buy_price":        buy_price,
+            "sell_price":       sell_price,
+            "tax":              item_tax,
+            "profit_unit":      profit_unit,
+            "roi":              roi,
+            "buy_qty_hr":       buy_qty_hr,
+            "sell_qty_hr":      sell_qty_hr,
+            "total_hr":         total_hr,
+            "ratio":            ratio,
+            "fq_label":         fq_label,
+            "fq_mult":          fq_mult,
+            "ge_limit":         ge_limit,
+            "potential_profit": potential_profit,
+            "adj_potential":    adj_potential,
+            "realistic_profit": realistic_profit,
+            "tax_cap":          item_tax == TAX_CAP,
+            "daily_volume":     total_hr * 24,
         })
 
-    # Bulk — ranked by demand-adjusted profit
-    bulk = sorted(
-        [r for r in rows
-         if r["ge_limit"] >= BULK_MIN_LIMIT
-         and r["total_hr"] >= BULK_MIN_HOURLY],
-        key=lambda x: -x["adjusted_profit"]
-    )[:30]
+    return rows
 
-    # Singular — ranked by demand-adjusted profit per unit
+
+def compute_flips(latest, mapping, fivemin):
+    rows = build_rows(latest, mapping, fivemin)
+
+    # Bulk: high-limit, liquid consumables/supplies
+    # Ranked by demand-adjusted potential profit
+    bulk = sorted(
+        [r for r in rows if r["ge_limit"] >= 1000 and r["total_hr"] >= 200],
+        key=lambda x: -x["adj_potential"]
+    )[:40]
+
+    # Singular: expensive, low-limit items — ranked by adj profit/unit
     singular = sorted(
         [r for r in rows
-         if r["ge_limit"] <= SINGULAR_MAX_LIMIT
-         and r["sell_price"] >= SINGULAR_MIN_PRICE
+         if r["ge_limit"] <= 15
+         and r["sell_price"] >= 500_000
          and r["total_hr"] >= 1],
         key=lambda x: -(x["profit_unit"] * x["fq_mult"])
-    )[:25]
+    )[:30]
 
-    # Watchlist — no filters, full rows
+    # High ROI: any item with exceptional ROI % and some liquidity
+    high_roi = sorted(
+        [r for r in rows if r["total_hr"] >= 50 and r["roi"] >= 5],
+        key=lambda x: -x["roi"]
+    )[:30]
+
+    # Watchlist — always from full unfiltered rows
     all_by_name = {r["name"].lower(): r for r in rows}
     watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
 
-    return bulk, singular, watch
+    return bulk, singular, high_roi, watch, rows
