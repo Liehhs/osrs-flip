@@ -171,41 +171,54 @@ def to_df(rows, col_keys):
 # ── Colour-highlighting helpers ───────────────────────────────────────────────
 # Applied to ROI % column (string) and Profit/unit column (string)
 # We re-derive the numeric values from the raw rows for the styler.
+
+
+# ── Colour-highlighting — axis=1 compatible with all pandas versions ──────────
+def _profit_color(val_str, pct):
+    """Return CSS string for a profit/unit cell based on its relative rank."""
+    if pct >= 0.7: return "background:#052e16; color:#4ade80; font-weight:600"
+    if pct >= 0.4: return "background:#0f2d1a; color:#86efac"
+    return ""
+
+def _roi_color(roi):
+    if roi >= 20:  return "background:#1c1000; color:#fbbf24; font-weight:600"
+    if roi >= 10:  return "background:#1a1200; color:#fde68a"
+    if roi >= 5:   return "background:#171400; color:#fef9c3"
+    return ""
+
 def highlight_rows(df, rows, col_keys):
-    """Return a Styler with colour bands on ROI % and Profit/unit."""
-    # Map display labels back to raw numeric values
+    """Row-by-row styler — works with pandas ≥2.0 and Python 3.14."""
     profit_label = COL_DEFS["profit_unit"][0]
     roi_label    = COL_DEFS["roi"][0]
 
-    # Build parallel numeric series
     profit_vals = [r.get("profit_unit", 0) for r in rows]
     roi_vals    = [r.get("roi", 0)         for r in rows]
     p_max = max(profit_vals) if profit_vals else 1
-    r_max = max(roi_vals)    if roi_vals    else 1
 
-    def row_style(row_idx):
-        p  = profit_vals[row_idx]
-        ro = roi_vals[row_idx]
-        styles = [""] * len(df.columns)
-        # Colour Profit/unit column
-        if profit_label in df.columns:
-            ci = list(df.columns).index(profit_label)
-            pct = p / p_max if p_max else 0
-            if pct >= 0.7:   styles[ci] = "background:#052e16; color:#4ade80; font-weight:600"
-            elif pct >= 0.4: styles[ci] = "background:#0f2d1a; color:#86efac"
-        # Colour ROI % column
-        if roi_label in df.columns:
-            ri = list(df.columns).index(roi_label)
-            if ro >= 20:   styles[ri] = "background:#1c1000; color:#fbbf24; font-weight:600"
-            elif ro >= 10: styles[ri] = "background:#1a1200; color:#fde68a"
-            elif ro >= 5:  styles[ri] = "background:#171400; color:#fef9c3"
-        return styles
+    # Build a lookup: row-index → (profit_pct, roi)
+    row_meta = {
+        i: (profit_vals[i] / p_max if p_max else 0, roi_vals[i])
+        for i in range(len(rows))
+    }
 
-    styled = df.style.apply(
-        lambda _: [row_style(i) for i in range(len(df))],
-        axis=None,
-    )
-    return styled
+    cols = list(df.columns)
+
+    def style_row(row):
+        idx = row.name  # integer index
+        if idx not in row_meta:
+            return [""] * len(cols)
+        pct, roi = row_meta[idx]
+        result = []
+        for col in cols:
+            if col == profit_label:
+                result.append(_profit_color(row[col], pct))
+            elif col == roi_label:
+                result.append(_roi_color(roi))
+            else:
+                result.append("")
+        return result
+
+    return df.style.apply(style_row, axis=1)
 
 DARK = dict(
     plot_bgcolor="#0f172a", paper_bgcolor="#0f172a", font_color="#cbd5e1",
