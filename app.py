@@ -153,7 +153,7 @@ COL_DEFS = {
     "buy_price":       ("Buy",           lambda r: fmt_gp(r.get("buy_price"))),
     "sell_price":      ("Sell",          lambda r: fmt_gp(r.get("sell_price"))),
     "tax":             ("Tax",           lambda r: fmt_gp(r.get("tax"))),
-    "profit_unit":     ("Profit/unit",   lambda r: fmt_gp(r.get("profit_unit"))),
+    "profit_unit":     ("Profit/item",   lambda r: fmt_gp(r.get("profit_unit"))),
     "roi":             ("ROI %",         lambda r: f"{r.get('roi',0):.1f}%"),
     "buy_qty_hr":      ("Buy/hr",        lambda r: f"{int(r.get('buy_qty_hr',0)):,}"),
     "sell_qty_hr":     ("Sell/hr",       lambda r: f"{int(r.get('sell_qty_hr',0)):,}"),
@@ -343,12 +343,12 @@ with t_sing:
                         showscale=True, colorbar=dict(title="ROI %")),
             text=[fmt_gp(r["profit_unit"]) for r in chart_s],
             textposition="outside",
-            hovertemplate="<b>%{x}</b><br>Profit/unit: %{text}<br>ROI: %{marker.color:.1f}%<extra></extra>",
+            hovertemplate="<b>%{x}</b><br>Profit/item: %{text}<br>ROI: %{marker.color:.1f}%<extra></extra>",
         ))
         fig_s.update_layout(
             template="plotly_dark", **DARK_LAYOUT,
-            xaxis_tickangle=-35, yaxis_title="Profit / unit (gp)",
-            title="Top 15 singular flips — post-tax profit per unit",
+            xaxis_tickangle=-35, yaxis_title="Profit / item (gp)",
+            title="Top 15 singular flips — post-tax profit per item",
         )
         st.plotly_chart(fig_s, use_container_width=True)
 
@@ -357,45 +357,47 @@ with t_sing:
 # ═══════════════════════════════════════════════════════════════════════════════
 with t_bulk:
     b_n = st.selectbox("Show top", [10, 20, 30, 40, 60], index=1, key="bulk_n")
-    display_bulk = sorted(bulk, key=lambda x: -x.get("adj_potential", 0))[:b_n]
+    display_bulk = sorted(bulk, key=lambda x: (-x.get("profit_unit",0), -x.get("fq_mult",0), -x.get("ge_limit",0), -x.get("roi",0)))[:b_n]
 
-    BULK_COLS = ["name","buy_price","sell_price","tax","profit_unit","roi",
-                 "buy_qty_hr","sell_qty_hr","ratio","fq_label","ge_limit",
-                 "potential_profit","adj_potential","realistic_profit"]
+    BULK_COLS = ["name","buy_price","sell_price","tax","profit_unit","ratio","fq_label","ge_limit",
+                 "buy_qty_hr","sell_qty_hr","roi","realistic_profit"]
     df_b = to_df(display_bulk, BULK_COLS)
     st.dataframe(make_styler(df_b, display_bulk, BULK_COLS),
                  use_container_width=True, hide_index=True, height=560)
 
-    st.markdown("<div class='section-label'>Adj. potential — top 15</div>", unsafe_allow_html=True)
+    st.caption("Bulk tab focus: profit/item first, then B/S quality, then GE limit. Realistic 4hr is the most practical column here.")
+
+    st.markdown("<div class='section-label'>Best bulk candidates — ranked by profit/item first, then fill quality</div>", unsafe_allow_html=True)
     if display_bulk:
         chart_b = display_bulk[:15]
         fig_b = go.Figure(go.Bar(
             x=[r["name"] for r in chart_b],
-            y=[r["adj_potential"] for r in chart_b],
-            marker=dict(color=[r["roi"] for r in chart_b], colorscale="teal",
-                        showscale=True, colorbar=dict(title="ROI %")),
-            text=[fmt_gp(r["adj_potential"]) for r in chart_b],
+            y=[r["realistic_profit"] for r in chart_b],
+            marker=dict(color=[r["ratio"] if r.get("ratio") is not None else 0 for r in chart_b], colorscale="Viridis",
+                        showscale=True, colorbar=dict(title="B/S")),
+            text=[fmt_gp(r["realistic_profit"]) for r in chart_b],
             textposition="outside",
-            hovertemplate="<b>%{x}</b><br>Adj. Potential: %{text}<br>ROI: %{marker.color:.1f}%<extra></extra>",
+            customdata=[[fmt_gp(r["profit_unit"]), r["fq_label"], f'{r["ge_limit"]:,}'] for r in chart_b],
+            hovertemplate="<b>%{x}</b><br>Realistic 4hr: %{text}<br>Profit/item: %{customdata[0]}<br>Fill: %{customdata[1]}<br>GE Limit: %{customdata[2]}<br>B/S: %{marker.color:.2f}<extra></extra>",
         ))
         fig_b.update_layout(
             template="plotly_dark", **DARK_LAYOUT,
-            xaxis_tickangle=-35, yaxis_title="Adj. Potential (gp)",
-            title="Top 15 bulk flips — demand-adjusted potential profit",
+            xaxis_tickangle=-35, yaxis_title="Realistic 4hr profit (gp)",
+            title="Top 15 bulk flips — practical 4-hour profit",
         )
         st.plotly_chart(fig_b, use_container_width=True)
 
-    st.markdown("<div class='section-label'>Volume vs profit/unit — market landscape</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-label'>Bulk market landscape — volume vs profit/item</div>", unsafe_allow_html=True)
     if bulk:
         sc_data = pd.DataFrame([{
             "Item": r["name"], "Sell/hr": r["sell_qty_hr"],
-            "Profit/unit": r["profit_unit"], "GE Limit": r["ge_limit"], "ROI %": r["roi"],
+            "Profit/item": r["profit_unit"], "GE Limit": r["ge_limit"], "ROI %": r["roi"],
         } for r in bulk[:40]])
         fig_sc = px.scatter(
-            sc_data, x="Sell/hr", y="Profit/unit",
+            sc_data, x="Sell/hr", y="Profit/item",
             size="GE Limit", color="ROI %",
             hover_name="Item", color_continuous_scale="viridis",
-            title="Bulk items — sell volume vs profit/unit (bubble = GE limit)",
+            title="Bulk items — sell/hr vs profit/item (bubble = GE limit)",
             template="plotly_dark",
         )
         fig_sc.update_layout(
@@ -421,11 +423,11 @@ with t_roi:
     if high_roi:
         rsc = pd.DataFrame([{
             "Item": r["name"], "ROI %": r["roi"],
-            "Daily Volume": r["daily_volume"], "Profit/unit": r["profit_unit"],
+            "Daily Volume": r["daily_volume"], "Profit/item": r["profit_unit"],
         } for r in high_roi[:40]])
         fig_r = px.scatter(
             rsc, x="Daily Volume", y="ROI %",
-            hover_name="Item", size="Profit/unit",
+            hover_name="Item", size="Profit/item",
             color="ROI %", color_continuous_scale="greens",
             title="High ROI — ROI % vs daily volume  (top-right = ideal)",
             template="plotly_dark",
@@ -532,7 +534,7 @@ with t_watch:
             },
         )
 
-        st.markdown("<div class='section-label'>Current spread by item</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-label'>Current profit/item by item</div>", unsafe_allow_html=True)
         fig_w = go.Figure(go.Bar(
             x=[r["name"] for r in display_watch],
             y=[r["profit_unit"] for r in display_watch],
@@ -540,11 +542,11 @@ with t_watch:
                         showscale=True, colorbar=dict(title="ROI %")),
             text=[fmt_gp(r["profit_unit"]) for r in display_watch],
             textposition="outside",
-            hovertemplate="<b>%{x}</b><br>Profit/unit: %{text}<br>ROI: %{marker.color:.1f}%<extra></extra>",
+            hovertemplate="<b>%{x}</b><br>Profit/item: %{text}<br>ROI: %{marker.color:.1f}%<extra></extra>",
         ))
         fig_w.update_layout(
             template="plotly_dark", **DARK_LAYOUT,
-            xaxis_tickangle=-25, yaxis_title="Profit / unit (gp)",
+            xaxis_tickangle=-25, yaxis_title="Profit / item (gp)",
             title="Investment watchlist — current post-tax spread",
         )
         st.plotly_chart(fig_w, use_container_width=True)
@@ -609,7 +611,7 @@ with t_guide:
 | Buy | Instasell — your offer price |
 | Sell | Instabuy — your list price |
 | Tax | min(sell × 2%, 5M GP) — seller pays |
-| Profit/unit | Sell − Buy − Tax |
+| Profit/item | Sell − Buy − Tax |
 | ROI % | (Profit ÷ Buy) × 100 |
 | Buy/hr | Rolling 1hr high-price volume (/1h endpoint) |
 | Sell/hr | Rolling 1hr low-price volume (/1h endpoint) |
@@ -638,8 +640,8 @@ with t_guide:
         st.markdown("""
 | Column | Colour | Threshold |
 |---|---|---|
-| Profit/unit | Dark green | Top 70% of list |
-| Profit/unit | Mid green | Top 40–70% of list |
+| Profit/item | Dark green | Top 70% of list |
+| Profit/item | Mid green | Top 40–70% of list |
 | ROI % | Gold bold | ≥ 20% |
 | ROI % | Pale gold | 10–20% |
 | ROI % | Pale yellow | 5–10% |
