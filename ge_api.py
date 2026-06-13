@@ -5,53 +5,135 @@ HEADERS = {"User-Agent": "OsrsFlipDashboard/Owen"}
 GE_TAX_RATE = 0.02
 GE_TAX_CAP = 5_000_000
 
+WATCHLIST_NAMES = [
+    "Tumeken's shadow", "Twisted bow", "Torva platebody", "Torva platelegs",
+    "Bandos chestplate", "Bandos tassets", "Armadyl chestplate",
+    "Armadyl chainskirt", "Scythe of vitur", "Soulreaper axe"
+]
+
+
 def fetch_latest():
-    return requests.get(f"{BASE}/latest", headers=HEADERS).json()["data"]
+    r = requests.get(f"{BASE}/latest", headers=HEADERS, timeout=10)
+    r.raise_for_status()
+    return r.json().get("data", {})
+
 
 def fetch_mapping():
-    return requests.get(f"{BASE}/mapping", headers=HEADERS).json()
+    r = requests.get(f"{BASE}/mapping", headers=HEADERS, timeout=10)
+    r.raise_for_status()
+    return r.json()
 
-def fetch_volumes():
-    return requests.get(f"{BASE}/volumes", headers=HEADERS).json()["data"]
 
-def fetch_timeseries(item_id, timestep="24h"):
-    return requests.get(f"{BASE}/timeseries", headers=HEADERS, params={"timestep": timestep, "id": item_id}).json()
+def fetch_5m():
+    """5-minute bucket — gives highPriceVolume and lowPriceVolume as real trade counts."""
+    r = requests.get(f"{BASE}/5m", headers=HEADERS, timeout=10)
+    r.raise_for_status()
+    return r.json().get("data", {})
 
-def tax_on_sell(price):
+
+def tax_on_sell(price: int) -> int:
     if price < 50:
         return 0
-    return min(price * GE_TAX_RATE, GE_TAX_CAP)
+    return int(min(price * GE_TAX_RATE, GE_TAX_CAP))
 
-def compute_flips(latest, mapping, volumes, cash_stack=50_000_000, bulk_min_limit=2000, min_roi=3.0, min_volume=500):
+
+def _vol_from_bucket(bucket) -> int:
+    """Safely extract total trade count from a 5m bucket regardless of shape."""
+    if bucket is None:
+        return 0
+    if isinstance(bucket, dict):
+        high = bucket.get("highPriceVolume") or 0
+        low = bucket.get("lowPriceVolume") or 0
+        return int(high) + int(low)
+    try:
+        return int(bucket)
+    except (TypeError, ValueError):
+        return 0
+
+
+def compute_flips(latest, mapping, fivemin, cash_stack_gp: int, bulk_min_limit: int, min_volume_5m: int):
+    """
+    Score every tradeable item and return:
+      bulk     — high GE limit items ranked by realistic cycle GP
+      singular — low limit (≤15) expensive items ranked by post-tax spread
+      watch    — WATCHLIST_NAMES snapshots
+
+    Liquidity gate: items must have at least `min_volume_5m` combined trades
+    in the last 5-minute bucket before they are ranked. This kills illiquid
+    noise (e.g. Unstrung comp bow with 0 buys/hour) regardless of spread size.
+    """
     mapping_by_id = {item["id"]: item for item in mapping}
     rows = []
+
     for id_str, quote in latest.items():
-        item_id = int(id_str)
-        item = mapping_by_id.get(item_id)
-        if not item or not quote.get("high") or not quote.get("low"):
+        item = mapping_by_id.get(int(id_str))
+        if not item:
             continue
-        buy = quote["low"]
-        sell = quote["high"]
-        limit = item.get("limit", 0)
-        if not limit or sell <= buy:
+        buy = quote.get("low") or 0
+        sell = quote.get("high") or 0
+        limit = item.get("limit") or 0
+        if not buy or not sell or not limit or sell <= buy:
             continue
+
         tax = tax_on_sell(sell)
         margin = sell - buy - tax
         if margin <= 0:
             continue
+
         roi = (margin / buy) * 100
-        volume = volumes.get(id_str, {})
-        if isinstance(volume, dict):
-            daily_vol = (volume.get("highPriceVolume", 0) or 0) + (volume.get("lowPriceVolume", 0) or 0)
-        else:
-            daily_vol = int(volume) if volume else 0
-        effective_limit = min(limit, max(1, int(cash_stack // buy)))
+
+        # 5-minute real trade velocity
+        bucket = fivemin.get(id_str)
+        vol_5m = _vol_from_bucket(bucket)
+        # Estimated trades per hour (12 × 5-min buckets)
+        vol_per_hour = vol_5m * 12
+
+        # How many units we can actually afford per cycle
+        affordable = max(1, cash_stack_gp // buy)
+        # Cap by GE limit — don't promise more than the limit allows
+        effective_limit = min(limit, affordable)
+
+        # Realistic cycle GP = margin × min(effective_limit, estimated hourly fills)
+        # Prevents illiquid items from showing fantasy cycle numbers
+        realistic_fills = min(effective_limit, max(1, vol_per_hour // 2))
+        cycle_gp = margin * realistic_fills
+
         rows.append({
-            "id": item_id, "name": item["name"], "buy": buy, "sell": sell,
-            "margin": margin, "roi": roi, "limit": limit, "volume": daily_vol,
-            "cycle_gp": margin * effective_limit, "tax_cap": tax == GE_TAX_CAP,
-            "effective_limit": effective_limit
+            "id": int(id_str),
+            "name": item["name"],
+            "buy": buy,
+            "sell": sell,
+            "margin": margin,
+            "roi": roi,
+            "limit": limit,
+            "vol_5m": vol_5m,
+            "vol_per_hour": vol_per_hour,
+            "effective_limit": effective_limit,
+            "cycle_gp": cycle_gp,
+            "tax_cap": tax == GE_TAX_CAP,
         })
-    bulk = sorted([r for r in rows if r["limit"] >= bulk_min_limit and r["roi"] >= min_roi and r["volume"] >= min_volume], key=lambda x: -x["cycle_gp"])[:20]
-    singular = sorted([r for r in rows if r["limit"] <= 15 and r["sell"] > 500_000 and r["roi"] > 0.5], key=lambda x: -x["margin"])[:20]
-    return bulk, singular
+
+    # ── Bulk flips ────────────────────────────────────────────────────────────
+    # High limit items with real liquidity, sorted by realistic cycle GP
+    bulk = sorted(
+        [r for r in rows
+         if r["limit"] >= bulk_min_limit
+         and r["vol_5m"] >= min_volume_5m],
+        key=lambda x: -x["cycle_gp"]
+    )[:25]
+
+    # ── Singular flips ────────────────────────────────────────────────────────
+    # Low limit (≤15), price >500k, some real liquidity
+    singular = sorted(
+        [r for r in rows
+         if r["limit"] <= 15
+         and r["sell"] > 500_000
+         and r["vol_5m"] >= 1],
+        key=lambda x: -x["margin"]
+    )[:25]
+
+    # ── Watchlist ─────────────────────────────────────────────────────────────
+    all_by_name = {r["name"].lower(): r for r in rows}
+    watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
+
+    return bulk, singular, watch
