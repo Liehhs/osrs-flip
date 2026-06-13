@@ -133,7 +133,6 @@ def compute_flips(latest, mapping, fivemin, cash_stack_gp: int, bulk_min_limit: 
     )[:25]
 
     # ── Watchlist ─────────────────────────────────────────────────────────────
-    all_by_name = {r["name"].lower(): r for r in rows}
-    watch = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
-
-    return bulk, singular, watch
+    # Use full rows (no liquidity filter) so watchlist items always appear
+    all_by_name_full = {r["name"].lower(): r for r in rows}
+    watch = [all_by_name_full[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name_full]
