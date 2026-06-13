@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
 import time
 import pytz
@@ -30,7 +28,6 @@ st.markdown("""
 [data-testid="stHeader"]           { background-color:#0f172a; }
 body,.stMarkdown,.stDataFrame,.stMetric { color:#e5e7eb!important; }
 .block-container { padding-top:1.5rem !important; padding-bottom:2rem; }
-[data-testid="stAppViewBlockContainer"] { padding-top:0.5rem !important; }
 .stTabs [data-baseweb="tab-list"] { gap:6px; }
 .stTabs [data-baseweb="tab"] {
     background-color:#1e293b; color:#94a3b8;
@@ -44,27 +41,40 @@ div[data-testid="metric-container"] {
     border-radius:8px; padding:10px 16px;
 }
 .section-header {
-    font-size:.9rem; font-weight:700; color:#94a3b8;
+    font-size:.88rem; font-weight:700; color:#94a3b8;
     letter-spacing:.08em; text-transform:uppercase;
     border-bottom:1px solid #334155; padding-bottom:6px;
-    margin-top:1.6rem; margin-bottom:.6rem;
+    margin-top:1.8rem; margin-bottom:.5rem;
 }
 .sub-label {
-    font-size:.75rem; color:#64748b; margin-bottom:4px; margin-top:.6rem;
+    font-size:.74rem; color:#64748b; margin-bottom:3px; margin-top:.5rem;
 }
-.mover-card {
+.pair-label {
+    font-size:.74rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+    padding:3px 8px; border-radius:4px; margin-bottom:4px; display:inline-block;
+}
+.pair-label-gain { background:#052e16; color:#4ade80; }
+.pair-label-loss { background:#2d0a0a; color:#f87171; }
+.mover-strip {
     background:#1e293b; border:1px solid #334155; border-radius:8px;
-    padding:10px 14px; margin-bottom:6px;
+    padding:12px 16px; margin-bottom:1rem;
 }
-.mover-card .mc-item { font-size:.82rem; color:#e2e8f0; font-weight:600; }
-.mover-card .mc-pct-pos { font-size:1rem; font-weight:700; color:#4ade80; }
-.mover-card .mc-pct-neg { font-size:1rem; font-weight:700; color:#f87171; }
-.mover-card .mc-pct-neu { font-size:1rem; font-weight:700; color:#94a3b8; }
-.mover-card .mc-meta { font-size:.72rem; color:#64748b; margin-top:2px; }
-.mover-period {
+.mover-strip-title {
     font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-    color:#38bdf8; margin-bottom:6px;
+    color:#38bdf8; margin-bottom:8px;
 }
+.mover-row { display:flex; gap:8px; flex-wrap:wrap; }
+.mover-chip {
+    background:#0f172a; border:1px solid #334155; border-radius:6px;
+    padding:5px 10px; display:inline-flex; flex-direction:column;
+    min-width:110px; max-width:160px;
+}
+.mc-name { font-size:.75rem; color:#cbd5e1; font-weight:600;
+           white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mc-pos { font-size:.88rem; font-weight:700; color:#4ade80; }
+.mc-neg { font-size:.88rem; font-weight:700; color:#f87171; }
+.mc-neu { font-size:.88rem; font-weight:700; color:#94a3b8; }
+.mc-price { font-size:.68rem; color:#64748b; margin-top:1px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -132,9 +142,9 @@ def trend_css(t):
             "Flat":"color:#94a3b8"}.get(t, "")
 
 def flag_css(flags):
-    if flags == "Quiet":                                  return "color:#64748b"
-    if "Price shock" in flags or "Big move" in flags:     return "color:#fbbf24; font-weight:600"
-    if "Fat margin"  in flags or "High GP"  in flags:     return "color:#4ade80; font-weight:600"
+    if flags == "Quiet":                              return "color:#64748b"
+    if "Price shock" in flags or "Big move" in flags: return "color:#fbbf24; font-weight:600"
+    if "Fat margin"  in flags or "High GP"  in flags: return "color:#4ade80; font-weight:600"
     return "color:#cbd5e1"
 
 def fmt_pct(v):
@@ -143,7 +153,7 @@ def fmt_pct(v):
     return f"{sign}{v:.2f}%"
 
 
-# -- COL_DEFS -----------------------------------------------------------------
+# -- Full COL_DEFS (used by non-shifts tabs) ----------------------------------
 COL_DEFS = {
     "name":             ("Item",           lambda r: r.get("name", "\u2014")),
     "buy_price":        ("Buy",            lambda r: fmt_gp(r.get("buy_price"))),
@@ -171,22 +181,27 @@ COL_DEFS = {
     "chg_12h":          ("12h %",          lambda r: fmt_pct(r.get("chg_12h"))),
     "trend":            ("Trend",          lambda r: r.get("trend","Flat")),
     "flags":            ("Signals",        lambda r: r.get("flags","Quiet")),
-    "signal_context":   ("Why to Watch",   lambda r: r.get("signal_context", r.get("candidate_reason",""))),
+    "signal_context":   ("Why to Watch",   lambda r: r.get("signal_context","")),
     "catalyst":         ("Catalyst",       lambda r: WATCHLIST_CATALYSTS.get(r.get("name",""), "")),
 }
 
 _PCT_KEYS = {"chg_1d","chg_7d","chg_14d","chg_30d","chg_20m","chg_40m","chg_1h","chg_6h","chg_12h"}
 
-def to_df(rows, col_keys):
+# Compact column set used by all shifts tables
+SHIFT_COLS = ["name", "pct_col", "trend", "buy_price", "sell_price", "ratio"]
+# pct_col is a placeholder replaced per-section below
+
+
+def to_df_generic(rows, col_keys):
     valid = [k for k in col_keys if k in COL_DEFS]
     return pd.DataFrame([
         {COL_DEFS[k][0]: COL_DEFS[k][1](r) for k in valid}
         for r in rows
     ])
 
-def make_styler(df, rows, col_keys):
-    valid  = [k for k in col_keys if k in COL_DEFS]
-    labels = {k: COL_DEFS[k][0] for k in valid}
+def make_styler_generic(df, rows, col_keys):
+    valid        = [k for k in col_keys if k in COL_DEFS]
+    labels       = {k: COL_DEFS[k][0] for k in valid}
     profit_label = labels.get("profit_unit")
     roi_label    = labels.get("roi")
     ratio_label  = labels.get("ratio")
@@ -222,13 +237,187 @@ def make_styler(df, rows, col_keys):
             elif col == trend_label: result.append(trend_css(r.get("trend","Flat")))
             elif col == flags_label: result.append(flag_css(r.get("flags","Quiet")))
             elif col in pct_labels:
-                v = r.get(pct_labels[col])
-                result.append(pct_css(v))
+                result.append(pct_css(r.get(pct_labels[col])))
             else:
                 result.append("")
         return result
 
     return df.style.apply(style_row, axis=1)
+
+def show_table(rows, col_keys, height=420):
+    if not rows:
+        st.info("No data available.")
+        return
+    valid = [k for k in col_keys if k in COL_DEFS]
+    df = to_df_generic(rows, valid)
+    st.dataframe(make_styler_generic(df, rows, valid),
+                 use_container_width=True, hide_index=True, height=height)
+
+
+# -- Shifts-specific table builder --------------------------------------------
+# Columns: Item | % Change | Trend | Buy | Sell | B/S
+SHIFTS_TABLE_COLS_ORDERED = ["name", "pct_display", "trend", "buy_price", "sell_price", "ratio"]
+SHIFTS_COL_LABELS = {
+    "name":        "Item",
+    "pct_display": "",       # set dynamically per section
+    "trend":       "Trend",
+    "buy_price":   "Buy",
+    "sell_price":  "Sell",
+    "ratio":       "B/S",
+}
+
+def build_shift_df(rows, pct_key, pct_label):
+    """Build a DataFrame for a shifts split table."""
+    records = []
+    for r in rows:
+        records.append({
+            "Item":      r.get("name", "\u2014"),
+            pct_label:   fmt_pct(r.get(pct_key)),
+            "Trend":     r.get("trend", "Flat"),
+            "Buy":       fmt_gp(r.get("buy_price")),
+            "Sell":      fmt_gp(r.get("sell_price")),
+            "B/S":       ratio_fmt(r.get("ratio")),
+        })
+    return pd.DataFrame(records)
+
+def style_shift_df(df, rows, pct_key, pct_label):
+    cols = list(df.columns)
+
+    def style_row(row):
+        idx = row.name
+        if idx >= len(rows): return [""] * len(cols)
+        r = rows[idx]
+        result = []
+        for col in cols:
+            if col == pct_label:
+                result.append(pct_css(r.get(pct_key)))
+            elif col == "Trend":
+                result.append(trend_css(r.get("trend", "Flat")))
+            elif col == "B/S":
+                result.append(ratio_css(r.get("ratio")))
+            else:
+                result.append("")
+        return result
+
+    return df.style.apply(style_row, axis=1)
+
+def show_split_tables(rows, pct_key, pct_label, pool_label, height=340):
+    """
+    Render two side-by-side tables: gainers (left) and decliners (right).
+    pool_label: "High-Ticket" or "Bulk"
+    """
+    # Split and sort
+    gainers   = sorted([r for r in rows if (r.get(pct_key) or 0) > 0],
+                       key=lambda r: r.get(pct_key) or 0, reverse=True)
+    decliners = sorted([r for r in rows if (r.get(pct_key) or 0) < 0],
+                       key=lambda r: r.get(pct_key) or 0)  # most negative first
+
+    col_l, col_r = st.columns(2, gap="medium")
+
+    with col_l:
+        st.markdown(
+            f"<span class='pair-label pair-label-gain'>"
+            f"{pool_label} -- Gainers</span>",
+            unsafe_allow_html=True,
+        )
+        if gainers:
+            df = build_shift_df(gainers, pct_key, pct_label)
+            st.dataframe(style_shift_df(df, gainers, pct_key, pct_label),
+                         use_container_width=True, hide_index=True, height=height)
+        else:
+            st.caption("No gainers in this window.")
+
+    with col_r:
+        st.markdown(
+            f"<span class='pair-label pair-label-loss'>"
+            f"{pool_label} -- Decliners</span>",
+            unsafe_allow_html=True,
+        )
+        if decliners:
+            df = build_shift_df(decliners, pct_key, pct_label)
+            st.dataframe(style_shift_df(df, decliners, pct_key, pct_label),
+                         use_container_width=True, hide_index=True, height=height)
+        else:
+            st.caption("No decliners in this window.")
+
+
+# -- Top Movers overview strip ------------------------------------------------
+def _chip(name, v, sell):
+    if v is None: return ""
+    sign  = "+" if v > 0 else ""
+    cls   = "mc-pos" if v > 0 else ("mc-neg" if v < 0 else "mc-neu")
+    short = name if len(name) <= 22 else name[:20] + ".."
+    return (
+        f"<div class='mover-chip'>"
+        f"<span class='mc-name' title='{name}'>{short}</span>"
+        f"<span class='{cls}'>{sign}{v:.2f}%</span>"
+        f"<span class='mc-price'>{sell}</span>"
+        f"</div>"
+    )
+
+def render_top_movers(ht_rows, bulk_rows):
+    all_items = list({r["id"]: r for r in ht_rows + bulk_rows}.values())
+
+    periods = [
+        ("20m",  "chg_20m"),
+        ("40m",  "chg_40m"),
+        ("1h",   "chg_1h"),
+        ("6h",   "chg_6h"),
+        ("12h",  "chg_12h"),
+        ("1D",   "chg_1d"),
+        ("7D",   "chg_7d"),
+        ("14D",  "chg_14d"),
+        ("30D",  "chg_30d"),
+    ]
+
+    st.markdown("<div class='section-header'>Top Movers -- Biggest Shifts at a Glance</div>",
+                unsafe_allow_html=True)
+    st.caption("Top 3 absolute % movers (combined high-ticket + bulk) per time window. "
+               "Green = gain, Red = decline.")
+
+    # Render in two rows: intraday 5 cols, daily 4 cols
+    intraday = periods[:5]
+    daily    = periods[5:]
+
+    def _render_row(period_list):
+        cols = st.columns(len(period_list))
+        for col, (label, key) in zip(cols, period_list):
+            with col:
+                valid = [r for r in all_items if r.get(key) is not None]
+                top3  = sorted(valid, key=lambda r: abs(r.get(key) or 0), reverse=True)[:3]
+                chips = "".join([_chip(r["name"], r.get(key), fmt_gp(r.get("sell_price")))
+                                 for r in top3])
+                st.markdown(
+                    f"<div class='mover-strip'>"
+                    f"<div class='mover-strip-title'>{label}</div>"
+                    f"<div class='mover-row'>{chips if chips else '<span style=\"color:#64748b;font-size:.75rem\">No data</span>'}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown("<div class='sub-label'>Intraday</div>", unsafe_allow_html=True)
+    _render_row(intraday)
+    st.markdown("<div class='sub-label'>Daily</div>", unsafe_allow_html=True)
+    _render_row(daily)
+
+
+# -- Full shifts section renderer ---------------------------------------------
+def render_shifts_section(section_title, ht_rows, bulk_rows, pct_key, pct_label, updated_label=""):
+    st.markdown(f"<div class='section-header'>{section_title}</div>", unsafe_allow_html=True)
+    if updated_label:
+        st.caption(updated_label)
+
+    # High-Ticket split
+    st.markdown("<div class='sub-label'>High-Ticket Items  (sell price >= 3M)</div>",
+                unsafe_allow_html=True)
+    show_split_tables(ht_rows, pct_key, pct_label, "High-Ticket", height=340)
+
+    st.markdown("<div style='margin-top:8px'></div>", unsafe_allow_html=True)
+
+    # Bulk split
+    st.markdown("<div class='sub-label'>Bulk Commodities  (prayers, herbs, logs, planks, bones, runes, etc.)</div>",
+                unsafe_allow_html=True)
+    show_split_tables(bulk_rows, pct_key, pct_label, "Bulk", height=340)
 
 
 # -- Session / fetch ----------------------------------------------------------
@@ -266,145 +455,9 @@ def do_shifts(all_rows, mapping):
     st.session_state["shifts_ts"]   = now_ts()
 
 
-# -- Layout helpers -----------------------------------------------------------
-def section_header(title):
-    st.markdown(f"<div class='section-header'>{title}</div>", unsafe_allow_html=True)
-
-def sub_label(text):
-    st.markdown(f"<div class='sub-label'>{text}</div>", unsafe_allow_html=True)
-
-def show_table(rows, col_keys, height=420):
-    if not rows:
-        st.info("No data available.")
-        return
-    valid = [k for k in col_keys if k in COL_DEFS]
-    df = to_df(rows, valid)
-    st.dataframe(make_styler(df, rows, valid),
-                 use_container_width=True, hide_index=True, height=height)
-
-def sort_by_abs_pct(rows, key):
-    """Sort rows by absolute value of pct key, descending (biggest movers first)."""
-    return sorted(rows, key=lambda r: abs(r.get(key) or 0), reverse=True)
-
-
-# -- Top Movers overview panel ------------------------------------------------
-def _pct_color(v):
-    if v is None: return "#64748b"
-    if v >= 10:   return "#22c55e"
-    if v > 0:     return "#86efac"
-    if v <= -10:  return "#ef4444"
-    if v < 0:     return "#fca5a5"
-    return "#94a3b8"
-
-def _pct_html(v):
-    if v is None: return '<span style="color:#64748b">&mdash;</span>'
-    sign  = "+" if v > 0 else ""
-    color = _pct_color(v)
-    return f'<span style="color:{color}; font-weight:700; font-size:1.05rem">{sign}{v:.2f}%</span>'
-
-def render_top_movers(ht_rows, bulk_rows):
-    """Render an overview strip: top 3 biggest absolute movers per time period."""
-    section_header("Top Movers -- Biggest % Shifts at a Glance")
-    st.caption("Top 3 highest absolute % movers across all tracked items for each time window. "
-               "Combines high-ticket and bulk pools. Sorted by magnitude, direction noted by color.")
-
-    periods = [
-        ("20m",  "chg_20m",  "Intraday"),
-        ("40m",  "chg_40m",  "Intraday"),
-        ("1h",   "chg_1h",   "Intraday"),
-        ("6h",   "chg_6h",   "Intraday"),
-        ("12h",  "chg_12h",  "Intraday"),
-        ("1D",   "chg_1d",   "Daily"),
-        ("7D",   "chg_7d",   "Daily"),
-        ("14D",  "chg_14d",  "Daily"),
-        ("30D",  "chg_30d",  "Daily"),
-    ]
-
-    all_items = {r["id"]: r for r in ht_rows + bulk_rows}
-    all_items = list(all_items.values())
-
-    # Render in two rows: intraday (5 cols) then daily (4 cols)
-    intraday = [(l, k, c) for l, k, c in periods if c == "Intraday"]
-    daily    = [(l, k, c) for l, k, c in periods if c == "Daily"]
-
-    sub_label("Intraday windows")
-    cols = st.columns(len(intraday))
-    for col, (label, key, _) in zip(cols, intraday):
-        with col:
-            valid = [r for r in all_items if r.get(key) is not None]
-            top3  = sorted(valid, key=lambda r: abs(r.get(key) or 0), reverse=True)[:3]
-            st.markdown(f"<div class='mover-period'>{label}</div>", unsafe_allow_html=True)
-            if not top3:
-                st.markdown("<div style='color:#64748b; font-size:.8rem'>No data</div>",
-                            unsafe_allow_html=True)
-                continue
-            for r in top3:
-                v    = r.get(key)
-                name = r.get("name", "")
-                sell = fmt_gp(r.get("sell_price"))
-                st.markdown(
-                    f"<div class='mover-card'>"
-                    f"<div class='mc-item'>{name}</div>"
-                    f"{_pct_html(v)}"
-                    f"<div class='mc-meta'>{sell}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-
-    sub_label("Daily windows")
-    cols = st.columns(len(daily))
-    for col, (label, key, _) in zip(cols, daily):
-        with col:
-            valid = [r for r in all_items if r.get(key) is not None]
-            top3  = sorted(valid, key=lambda r: abs(r.get(key) or 0), reverse=True)[:3]
-            st.markdown(f"<div class='mover-period'>{label}</div>", unsafe_allow_html=True)
-            if not top3:
-                st.markdown("<div style='color:#64748b; font-size:.8rem'>No data</div>",
-                            unsafe_allow_html=True)
-                continue
-            for r in top3:
-                v    = r.get(key)
-                name = r.get("name", "")
-                sell = fmt_gp(r.get("sell_price"))
-                st.markdown(
-                    f"<div class='mover-card'>"
-                    f"<div class='mc-item'>{name}</div>"
-                    f"{_pct_html(v)}"
-                    f"<div class='mc-meta'>{sell}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-
-
-# -- Shifts section renderer --------------------------------------------------
-def render_shifts_section(section_title, ht_rows, bulk_rows, sort_key,
-                           col_keys_ht=None, col_keys_bulk=None, updated_label=""):
-    section_header(section_title)
-    if updated_label:
-        st.caption(updated_label)
-
-    sub_label("High-Ticket Items  (sell price >= 3M)")
-    if ht_rows:
-        show_table(sort_by_abs_pct(ht_rows, sort_key), col_keys_ht or [], height=380)
-    else:
-        st.info("No high-ticket data.")
-
-    sub_label("Bulk Commodities  (prayers, herbs, logs, planks, bones, runes, etc.)")
-    if bulk_rows:
-        show_table(sort_by_abs_pct(bulk_rows, sort_key), col_keys_bulk or [], height=380)
-    else:
-        st.info("No bulk commodity data.")
-
-
 # -- Header -------------------------------------------------------------------
 _tw_color, _tw_msg = get_timing()
 _cmap = {"green": "#22c55e", "yellow": "#facc15", "red": "#ef4444"}
-
-st.markdown(
-    "<style>.header-row { display:flex; align-items:center; gap:1rem; "
-    "padding:0.5rem 0 0.25rem 0; } </style>",
-    unsafe_allow_html=True,
-)
 
 col_title, col_banner, col_btn = st.columns([3, 5, 1])
 with col_title:
@@ -466,122 +519,97 @@ tab_bulk, tab_sing, tab_roi, tab_shifts, tab_watch, tab_sig = st.tabs([
 # ---- Bulk -------------------------------------------------------------------
 with tab_bulk:
     st.caption(f"High-volume bulk flips. Updated {fmt_ago(p_ago)}.")
-    cols = ["name","buy_price","sell_price","profit_unit","roi",
-            "ge_limit","fq_label","ratio","realistic_profit"]
-    show_table(bulk_rows, cols, height=520)
+    show_table(bulk_rows,
+               ["name","buy_price","sell_price","profit_unit","roi",
+                "ge_limit","fq_label","ratio","realistic_profit"], height=520)
 
 # ---- Singular ---------------------------------------------------------------
 with tab_sing:
     st.caption("Low GE-limit, high-value singular flips.")
-    cols = ["name","buy_price","sell_price","profit_unit","roi",
-            "ge_limit","fq_label","ratio","adj_potential"]
-    show_table(singular, cols, height=520)
+    show_table(singular,
+               ["name","buy_price","sell_price","profit_unit","roi",
+                "ge_limit","fq_label","ratio","adj_potential"], height=520)
 
 # ---- High ROI ---------------------------------------------------------------
 with tab_roi:
     st.caption("Best ROI % regardless of volume.")
-    cols = ["name","buy_price","sell_price","profit_unit","roi","fq_label","ratio","ge_limit"]
-    show_table(high_roi, cols, height=520)
+    show_table(high_roi,
+               ["name","buy_price","sell_price","profit_unit","roi",
+                "fq_label","ratio","ge_limit"], height=520)
 
 # ---- Shifts -----------------------------------------------------------------
 with tab_shifts:
     st.caption(
         "Price shift tracking across multiple time horizons. "
-        "Intraday tables refresh every 5 min. Daily tables refresh every hour."
+        "Each section shows Gainers vs Decliners side by side. "
+        "Intraday refreshes every 5 min. Daily refreshes every hour."
     )
 
     mapping = st.session_state.get("mapping", [])
     if stale("shifts_ts", SHIFTS_INTERVAL) or manual:
-        with st.spinner("Fetching shift data (timeseries per item, ~15-30s)..."):
+        with st.spinner("Fetching shift data (~15-30s)..."):
             do_shifts(all_rows, mapping)
 
     shifts_ht   = st.session_state.get("shifts_ht",   [])
     shifts_bulk = st.session_state.get("shifts_bulk", [])
     shifts_ago  = fmt_ago(secs_ago(st.session_state.get("shifts_ts")))
 
-    INTRADAY_COLS_HT   = ["name","chg_20m","chg_40m","chg_1h","chg_6h","chg_12h",
-                           "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio","fq_label"]
-    INTRADAY_COLS_BULK = ["name","chg_20m","chg_40m","chg_1h","chg_6h","chg_12h",
-                          "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio","ge_limit"]
-    DAILY_COLS_HT      = ["name","trend","flags","roi",
-                           "buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio","fq_label"]
-    DAILY_COLS_BULK    = ["name","trend","flags","roi",
-                          "buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio","ge_limit"]
-
-    # -- Top Movers overview (before Section 1) --------------------------------
+    # Top Movers overview
     if shifts_ht or shifts_bulk:
         render_top_movers(shifts_ht, shifts_bulk)
 
-    st.markdown("<div style='margin-top:1.2rem'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:.5rem'></div>", unsafe_allow_html=True)
 
-    # -- Section 1: Intraday --------------------------------------------------
+    # Section 1 -- Intraday
     render_shifts_section(
         "Section 1 -- Intraday Price Shifts",
         shifts_ht, shifts_bulk,
-        sort_key="chg_1h",
-        col_keys_ht   = INTRADAY_COLS_HT,
-        col_keys_bulk = INTRADAY_COLS_BULK,
-        updated_label = f"Sorted by absolute 1h % move (biggest movers first). "
-                        f"Updates every 5 min. Last updated: {shifts_ago}.",
+        pct_key="chg_1h", pct_label="1h %",
+        updated_label=f"Gainers sorted high to low. Decliners sorted low to high. "
+                      f"Sorted by 1h % move. Updates every 5 min. Last: {shifts_ago}.",
     )
 
-    # -- Section 2: 1D --------------------------------------------------------
-    _d1_cols_ht   = ["name","chg_1d"] + DAILY_COLS_HT[1:]
-    _d1_cols_bulk = ["name","chg_1d"] + DAILY_COLS_BULK[1:]
+    # Section 2 -- 1D
     render_shifts_section(
         "Section 2 -- 1-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        sort_key="chg_1d",
-        col_keys_ht   = _d1_cols_ht,
-        col_keys_bulk = _d1_cols_bulk,
-        updated_label = f"Sorted by absolute 1D % move. Last updated: {shifts_ago}.",
+        pct_key="chg_1d", pct_label="1D %",
+        updated_label=f"Sorted by 1D % move. Last: {shifts_ago}.",
     )
 
-    # -- Section 3: 7D --------------------------------------------------------
-    _d7_cols_ht   = ["name","chg_7d"] + DAILY_COLS_HT[1:]
-    _d7_cols_bulk = ["name","chg_7d"] + DAILY_COLS_BULK[1:]
+    # Section 3 -- 7D
     render_shifts_section(
         "Section 3 -- 7-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        sort_key="chg_7d",
-        col_keys_ht   = _d7_cols_ht,
-        col_keys_bulk = _d7_cols_bulk,
-        updated_label = f"Sorted by absolute 7D % move (rolling). Last updated: {shifts_ago}.",
+        pct_key="chg_7d", pct_label="7D %",
+        updated_label=f"Sorted by 7D % move (rolling). Last: {shifts_ago}.",
     )
 
-    # -- Section 4: 14D -------------------------------------------------------
-    _d14_cols_ht   = ["name","chg_14d"] + DAILY_COLS_HT[1:]
-    _d14_cols_bulk = ["name","chg_14d"] + DAILY_COLS_BULK[1:]
+    # Section 4 -- 14D
     render_shifts_section(
         "Section 4 -- 14-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        sort_key="chg_14d",
-        col_keys_ht   = _d14_cols_ht,
-        col_keys_bulk = _d14_cols_bulk,
-        updated_label = f"Sorted by absolute 14D % move (rolling). Last updated: {shifts_ago}.",
+        pct_key="chg_14d", pct_label="14D %",
+        updated_label=f"Sorted by 14D % move (rolling). Last: {shifts_ago}.",
     )
 
-    # -- Section 5: 30D -------------------------------------------------------
-    _d30_cols_ht   = ["name","chg_30d"] + DAILY_COLS_HT[1:]
-    _d30_cols_bulk = ["name","chg_30d"] + DAILY_COLS_BULK[1:]
+    # Section 5 -- 30D
     render_shifts_section(
         "Section 5 -- 30-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        sort_key="chg_30d",
-        col_keys_ht   = _d30_cols_ht,
-        col_keys_bulk = _d30_cols_bulk,
-        updated_label = f"Sorted by absolute 30D % move (rolling). Last updated: {shifts_ago}.",
+        pct_key="chg_30d", pct_label="30D %",
+        updated_label=f"Sorted by 30D % move (rolling). Last: {shifts_ago}.",
     )
 
 # ---- Watchlist --------------------------------------------------------------
 with tab_watch:
     st.caption(
-        "Curated investment-grade items. Always shown. "
-        "Sorted by trend activity -- most active moves first."
+        "Curated investment-grade items. Sorted by trend activity -- most active first."
     )
-    watch_cols = ["name","chg_1d","chg_7d","chg_30d","trend","flags",
-                  "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio"]
-    show_table(watch, watch_cols, height=600)
+    show_table(watch,
+               ["name","chg_1d","chg_7d","chg_30d","trend","flags",
+                "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio"],
+               height=600)
     with st.expander("Catalyst notes"):
         for row in watch:
             cat = WATCHLIST_CATALYSTS.get(row["name"], "")
@@ -590,9 +618,9 @@ with tab_watch:
 # ---- Signals ----------------------------------------------------------------
 with tab_sig:
     st.caption(
-        "Meta-sensitive items driven by game updates, dev blogs, hype and community discussion. "
-        "Always shown. Update SIGNALS_UNIVERSE in ge_api.py as events change."
+        "Meta-sensitive items. Update SIGNALS_UNIVERSE in ge_api.py as events change."
     )
-    sig_cols = ["name","chg_1d","chg_7d","chg_30d","trend","flags",
-                "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio","signal_context"]
-    show_table(signals, sig_cols, height=600)
+    show_table(signals,
+               ["name","chg_1d","chg_7d","chg_30d","trend","flags",
+                "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio","signal_context"],
+               height=600)
