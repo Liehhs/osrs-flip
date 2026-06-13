@@ -316,21 +316,30 @@ def render_trend_legend():
 def build_shift_df(rows, pct_key, prev_key, pct_label):
     records = []
     for r in rows:
-        v     = r.get(pct_key)
-        prev  = r.get(prev_key)
+        v    = r.get(pct_key)
+        prev = r.get(prev_key)
+        cur  = r.get("sell_price")
+        # % Shift -- plain percentage
         if v is not None:
             sign = "+" if v > 0 else ""
             pct_str = f"{sign}{v:.2f}%"
         else:
             pct_str = "--"
-        prev_str = f"was {fmt_gp(prev)}" if prev else ""
-        cell = f"{pct_str}  {prev_str}" if prev_str else pct_str
+        # Price -- current + GP delta in parentheses
+        cur_fmt = fmt_gp(cur)
+        if cur and prev and cur != prev:
+            delta     = cur - prev
+            sign      = "+" if delta >= 0 else ""
+            delta_fmt = f"{sign}{fmt_gp(delta)}"
+            price_str = f"{cur_fmt} ({delta_fmt})"
+        else:
+            price_str = cur_fmt
         records.append({
-            "Item":        r.get("name", "--"),
-            pct_label:     cell,
-            "Trend":       r.get("trend", "Flat"),
-            "Price":       fmt_gp(r.get("sell_price")),
-            "B/S":         ratio_fmt(r.get("ratio")),
+            "Item":    r.get("name", "--"),
+            pct_label: pct_str,
+            "Trend":   r.get("trend", "Flat"),
+            "Price":   price_str,
+            "B/S":     ratio_fmt(r.get("ratio")),
         })
     return pd.DataFrame(records)
 
