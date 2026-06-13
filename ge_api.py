@@ -41,7 +41,10 @@ def compute_flips(latest, mapping, volumes, cash_stack=50_000_000, bulk_min_limi
             continue
         roi = (margin / buy) * 100
         volume = volumes.get(id_str, {})
-        daily_vol = (volume.get("highPriceVolume", 0) or 0) + (volume.get("lowPriceVolume", 0) or 0)
+        if isinstance(volume, dict):
+            daily_vol = (volume.get("highPriceVolume", 0) or 0) + (volume.get("lowPriceVolume", 0) or 0)
+        else:
+            daily_vol = int(volume) if volume else 0
         effective_limit = min(limit, max(1, int(cash_stack // buy)))
         rows.append({
             "id": item_id, "name": item["name"], "buy": buy, "sell": sell,
