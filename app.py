@@ -7,7 +7,7 @@ import pytz
 from ge_api import (
     fetch_latest, fetch_mapping, fetch_volumes, fetch_timeseries,
     compute_flips, build_shifts_data,
-    WATCHLIST_NAMES, WATCHLIST_CATALYSTS, SIGNALS_UNIVERSE,
+    WATCHLIST_NAMES, WATCHLIST_CATALYSTS, WATCHLIST_CATEGORY, SIGNALS_UNIVERSE,
 )
 
 st.set_page_config(
@@ -69,21 +69,54 @@ div[data-testid="metric-container"] {
     padding:5px 10px; display:inline-flex; flex-direction:column;
     min-width:110px; max-width:160px;
 }
-.mc-name { font-size:.75rem; color:#cbd5e1; font-weight:600;
-           white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.mc-pos { font-size:.88rem; font-weight:700; color:#4ade80; }
-.mc-neg { font-size:.88rem; font-weight:700; color:#f87171; }
-.mc-neu { font-size:.88rem; font-weight:700; color:#94a3b8; }
+.mc-name  { font-size:.75rem; color:#cbd5e1; font-weight:600;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mc-pos   { font-size:.88rem; font-weight:700; color:#4ade80; }
+.mc-neg   { font-size:.88rem; font-weight:700; color:#f87171; }
+.mc-neu   { font-size:.88rem; font-weight:700; color:#94a3b8; }
 .mc-price { font-size:.68rem; color:#64748b; margin-top:1px; }
+/* Trend legend */
+.legend-box {
+    background:#1e293b; border:1px solid #334155; border-radius:8px;
+    padding:10px 16px; margin-bottom:1rem; display:flex; gap:20px; flex-wrap:wrap;
+}
+.legend-item { display:flex; align-items:center; gap:8px; }
+.legend-badge {
+    font-size:.72rem; font-weight:700; padding:2px 7px; border-radius:4px;
+    white-space:nowrap;
+}
+.lb-extended  { background:#1c1000; color:#fb923c; }
+.lb-building  { background:#052e16; color:#4ade80; }
+.lb-pullback  { background:#1c1a00; color:#facc15; }
+.lb-weakening { background:#2d0a0a; color:#f87171; }
+.lb-flat      { background:#1e293b; color:#94a3b8; border:1px solid #334155; }
+.legend-desc  { font-size:.75rem; color:#94a3b8; }
+/* Watchlist category badge */
+.cat-badge {
+    font-size:.68rem; font-weight:600; padding:1px 6px; border-radius:3px;
+    background:#0f172a; border:1px solid #334155; color:#64748b;
+    white-space:nowrap;
+}
+/* Signal type badges */
+.sig-game-update   { background:#1c1000; color:#fb923c; }
+.sig-meta-shift    { background:#0c1a2e; color:#38bdf8; }
+.sig-boss-demand   { background:#1a1200; color:#fde68a; }
+.sig-supply-shock  { background:#2d0a0a; color:#f87171; }
+.sig-community     { background:#1a0c2e; color:#c084fc; }
+.sig-pvp-meta      { background:#2d1a0a; color:#fdba74; }
+.sig-new-content   { background:#052e16; color:#4ade80; }
+.status-active   { font-size:.68rem; font-weight:700; color:#f87171; }
+.status-watch    { font-size:.68rem; font-weight:700; color:#facc15; }
+.status-cooling  { font-size:.68rem; font-weight:700; color:#94a3b8; }
 </style>
 """, unsafe_allow_html=True)
 
 
 # -- Helpers ------------------------------------------------------------------
 def fmt_gp(n):
-    if n is None: return "\u2014"
+    if n is None: return "--"
     try: n = int(n)
-    except: return "\u2014"
+    except: return "--"
     if abs(n) >= 1_000_000_000: return f"{n/1_000_000_000:.2f}B"
     if abs(n) >= 1_000_000:     return f"{n/1_000_000:.1f}M"
     if abs(n) >= 1_000:         return f"{n/1_000:.1f}K"
@@ -107,7 +140,7 @@ def get_timing():
         return "yellow", f"Transition window -- Moderate activity. Good for placing buy orders. ({ts})"
     return     "red",   f"Buy window -- Off-peak. Place buy orders now, sell into afternoon. ({ts})"
 
-def ratio_fmt(r): return "\u2014" if r is None else f"{r:.2f}"
+def ratio_fmt(r): return "--" if r is None else f"{r:.2f}"
 
 def ratio_css(r):
     if r is None:       return "color:#64748b"
@@ -119,7 +152,7 @@ def ratio_css(r):
 
 def fq_fmt(label):
     return {"Ideal":"Ideal","High demand":"High demand","Hard to buy":"Hard to buy",
-            "Slight flood":"Slight flood","Flooded":"Flooded","No data":"\u2014"}.get(label, label)
+            "Slight flood":"Slight flood","Flooded":"Flooded","No data":"--"}.get(label, label)
 
 def fq_css(label):
     return {"Ideal":"color:#4ade80","High demand":"color:#fb923c",
@@ -142,20 +175,20 @@ def trend_css(t):
             "Flat":"color:#94a3b8"}.get(t, "")
 
 def flag_css(flags):
-    if flags == "Quiet":                              return "color:#64748b"
-    if "Price shock" in flags or "Big move" in flags: return "color:#fbbf24; font-weight:600"
-    if "Fat margin"  in flags or "High GP"  in flags: return "color:#4ade80; font-weight:600"
+    if flags == "Quiet":                               return "color:#64748b"
+    if "Price shock" in flags or "Big move" in flags:  return "color:#fbbf24; font-weight:600"
+    if "Fat margin"  in flags or "High GP"  in flags:  return "color:#4ade80; font-weight:600"
     return "color:#cbd5e1"
 
 def fmt_pct(v):
-    if v is None: return "\u2014"
+    if v is None: return "--"
     sign = "+" if v > 0 else ""
     return f"{sign}{v:.2f}%"
 
 
-# -- Full COL_DEFS (used by non-shifts tabs) ----------------------------------
+# -- COL_DEFS (non-shifts tabs) -----------------------------------------------
 COL_DEFS = {
-    "name":             ("Item",           lambda r: r.get("name", "\u2014")),
+    "name":             ("Item",           lambda r: r.get("name", "--")),
     "buy_price":        ("Buy",            lambda r: fmt_gp(r.get("buy_price"))),
     "sell_price":       ("Sell",           lambda r: fmt_gp(r.get("sell_price"))),
     "tax":              ("Tax",            lambda r: fmt_gp(r.get("tax"))),
@@ -181,16 +214,11 @@ COL_DEFS = {
     "chg_12h":          ("12h %",          lambda r: fmt_pct(r.get("chg_12h"))),
     "trend":            ("Trend",          lambda r: r.get("trend","Flat")),
     "flags":            ("Signals",        lambda r: r.get("flags","Quiet")),
-    "signal_context":   ("Why to Watch",   lambda r: r.get("signal_context","")),
-    "catalyst":         ("Catalyst",       lambda r: WATCHLIST_CATALYSTS.get(r.get("name",""), "")),
+    "signal_context":   ("Signal",         lambda r: r.get("signal_context","")),
+    "category":         ("Source",         lambda r: r.get("category","")),
 }
 
 _PCT_KEYS = {"chg_1d","chg_7d","chg_14d","chg_30d","chg_20m","chg_40m","chg_1h","chg_6h","chg_12h"}
-
-# Compact column set used by all shifts tables
-SHIFT_COLS = ["name", "pct_col", "trend", "buy_price", "sell_price", "ratio"]
-# pct_col is a placeholder replaced per-section below
-
 
 def to_df_generic(rows, col_keys):
     valid = [k for k in col_keys if k in COL_DEFS]
@@ -254,35 +282,60 @@ def show_table(rows, col_keys, height=420):
                  use_container_width=True, hide_index=True, height=height)
 
 
-# -- Shifts-specific table builder --------------------------------------------
-# Columns: Item | % Change | Trend | Buy | Sell | B/S
-SHIFTS_TABLE_COLS_ORDERED = ["name", "pct_display", "trend", "buy_price", "sell_price", "ratio"]
-SHIFTS_COL_LABELS = {
-    "name":        "Item",
-    "pct_display": "",       # set dynamically per section
-    "trend":       "Trend",
-    "buy_price":   "Buy",
-    "sell_price":  "Sell",
-    "ratio":       "B/S",
-}
+# -- Trend legend -------------------------------------------------------------
+def render_trend_legend():
+    st.markdown("""
+<div class='legend-box'>
+  <div class='legend-item'>
+    <span class='legend-badge lb-extended'>Extended</span>
+    <span class='legend-desc'>Strong multi-week uptrend still accelerating -- price up 30D, 7D, and 1D</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge lb-building'>Building</span>
+    <span class='legend-desc'>Steady uptrend forming -- positive 30D base, holding gains short-term</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge lb-pullback'>Pullback</span>
+    <span class='legend-desc'>Was rising long-term but now pulling back short-term -- potential re-entry</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge lb-weakening'>Weakening</span>
+    <span class='legend-desc'>Falling on both 30D and 7D horizons -- avoid or wait for reversal signal</span>
+  </div>
+  <div class='legend-item'>
+    <span class='legend-badge lb-flat'>Flat</span>
+    <span class='legend-desc'>No meaningful directional trend -- sideways price action</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-def build_shift_df(rows, pct_key, pct_label):
-    """Build a DataFrame for a shifts split table."""
+
+# -- Shifts table builder -----------------------------------------------------
+# Columns: Item | % Shift (with prev price) | Trend | Current Price | B/S
+
+def build_shift_df(rows, pct_key, prev_key, pct_label):
     records = []
     for r in rows:
+        v     = r.get(pct_key)
+        prev  = r.get(prev_key)
+        if v is not None:
+            sign = "+" if v > 0 else ""
+            pct_str = f"{sign}{v:.2f}%"
+        else:
+            pct_str = "--"
+        prev_str = f"was {fmt_gp(prev)}" if prev else ""
+        cell = f"{pct_str}  {prev_str}" if prev_str else pct_str
         records.append({
-            "Item":      r.get("name", "\u2014"),
-            pct_label:   fmt_pct(r.get(pct_key)),
-            "Trend":     r.get("trend", "Flat"),
-            "Buy":       fmt_gp(r.get("buy_price")),
-            "Sell":      fmt_gp(r.get("sell_price")),
-            "B/S":       ratio_fmt(r.get("ratio")),
+            "Item":        r.get("name", "--"),
+            pct_label:     cell,
+            "Trend":       r.get("trend", "Flat"),
+            "Price":       fmt_gp(r.get("sell_price")),
+            "B/S":         ratio_fmt(r.get("ratio")),
         })
     return pd.DataFrame(records)
 
 def style_shift_df(df, rows, pct_key, pct_label):
     cols = list(df.columns)
-
     def style_row(row):
         idx = row.name
         if idx >= len(rows): return [""] * len(cols)
@@ -298,50 +351,37 @@ def style_shift_df(df, rows, pct_key, pct_label):
             else:
                 result.append("")
         return result
-
     return df.style.apply(style_row, axis=1)
 
-def show_split_tables(rows, pct_key, pct_label, pool_label, height=340):
-    """
-    Render two side-by-side tables: gainers (left) and decliners (right).
-    pool_label: "High-Ticket" or "Bulk"
-    """
-    # Split and sort
+def show_split_tables(rows, pct_key, prev_key, pct_label, pool_label, height=340):
     gainers   = sorted([r for r in rows if (r.get(pct_key) or 0) > 0],
                        key=lambda r: r.get(pct_key) or 0, reverse=True)
     decliners = sorted([r for r in rows if (r.get(pct_key) or 0) < 0],
-                       key=lambda r: r.get(pct_key) or 0)  # most negative first
+                       key=lambda r: r.get(pct_key) or 0)
 
     col_l, col_r = st.columns(2, gap="medium")
-
     with col_l:
-        st.markdown(
-            f"<span class='pair-label pair-label-gain'>"
-            f"{pool_label} -- Gainers</span>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"<span class='pair-label pair-label-gain'>{pool_label} -- Gainers</span>",
+                    unsafe_allow_html=True)
         if gainers:
-            df = build_shift_df(gainers, pct_key, pct_label)
+            df = build_shift_df(gainers, pct_key, prev_key, pct_label)
             st.dataframe(style_shift_df(df, gainers, pct_key, pct_label),
                          use_container_width=True, hide_index=True, height=height)
         else:
             st.caption("No gainers in this window.")
 
     with col_r:
-        st.markdown(
-            f"<span class='pair-label pair-label-loss'>"
-            f"{pool_label} -- Decliners</span>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"<span class='pair-label pair-label-loss'>{pool_label} -- Decliners</span>",
+                    unsafe_allow_html=True)
         if decliners:
-            df = build_shift_df(decliners, pct_key, pct_label)
+            df = build_shift_df(decliners, pct_key, prev_key, pct_label)
             st.dataframe(style_shift_df(df, decliners, pct_key, pct_label),
                          use_container_width=True, hide_index=True, height=height)
         else:
             st.caption("No decliners in this window.")
 
 
-# -- Top Movers overview strip ------------------------------------------------
+# -- Top Movers strip ---------------------------------------------------------
 def _chip(name, v, sell):
     if v is None: return ""
     sign  = "+" if v > 0 else ""
@@ -357,7 +397,6 @@ def _chip(name, v, sell):
 
 def render_top_movers(ht_rows, bulk_rows):
     all_items = list({r["id"]: r for r in ht_rows + bulk_rows}.values())
-
     periods = [
         ("20m",  "chg_20m"),
         ("40m",  "chg_40m"),
@@ -369,15 +408,9 @@ def render_top_movers(ht_rows, bulk_rows):
         ("14D",  "chg_14d"),
         ("30D",  "chg_30d"),
     ]
-
     st.markdown("<div class='section-header'>Top Movers -- Biggest Shifts at a Glance</div>",
                 unsafe_allow_html=True)
-    st.caption("Top 3 absolute % movers (combined high-ticket + bulk) per time window. "
-               "Green = gain, Red = decline.")
-
-    # Render in two rows: intraday 5 cols, daily 4 cols
-    intraday = periods[:5]
-    daily    = periods[5:]
+    st.caption("Top 3 absolute % movers (combined high-ticket + bulk) per time window.")
 
     def _render_row(period_list):
         cols = st.columns(len(period_list))
@@ -390,34 +423,136 @@ def render_top_movers(ht_rows, bulk_rows):
                 st.markdown(
                     f"<div class='mover-strip'>"
                     f"<div class='mover-strip-title'>{label}</div>"
-                    f"<div class='mover-row'>{chips if chips else '<span style=\"color:#64748b;font-size:.75rem\">No data</span>'}</div>"
-                    f"</div>",
+                    f"<div class='mover-row'>"
+                    f"{chips if chips else '<span style=\"color:#64748b;font-size:.75rem\">No data</span>'}"
+                    f"</div></div>",
                     unsafe_allow_html=True,
                 )
 
     st.markdown("<div class='sub-label'>Intraday</div>", unsafe_allow_html=True)
-    _render_row(intraday)
+    _render_row(periods[:5])
     st.markdown("<div class='sub-label'>Daily</div>", unsafe_allow_html=True)
-    _render_row(daily)
+    _render_row(periods[5:])
 
 
-# -- Full shifts section renderer ---------------------------------------------
-def render_shifts_section(section_title, ht_rows, bulk_rows, pct_key, pct_label, updated_label=""):
+# -- Shifts section -----------------------------------------------------------
+def render_shifts_section(section_title, ht_rows, bulk_rows,
+                          pct_key, prev_key, pct_label, updated_label=""):
     st.markdown(f"<div class='section-header'>{section_title}</div>", unsafe_allow_html=True)
     if updated_label:
         st.caption(updated_label)
 
-    # High-Ticket split
     st.markdown("<div class='sub-label'>High-Ticket Items  (sell price >= 3M)</div>",
                 unsafe_allow_html=True)
-    show_split_tables(ht_rows, pct_key, pct_label, "High-Ticket", height=340)
+    show_split_tables(ht_rows, pct_key, prev_key, pct_label, "High-Ticket", height=340)
 
     st.markdown("<div style='margin-top:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div class='sub-label'>Bulk Commodities</div>", unsafe_allow_html=True)
+    show_split_tables(bulk_rows, pct_key, prev_key, pct_label, "Bulk", height=340)
 
-    # Bulk split
-    st.markdown("<div class='sub-label'>Bulk Commodities  (prayers, herbs, logs, planks, bones, runes, etc.)</div>",
-                unsafe_allow_html=True)
-    show_split_tables(bulk_rows, pct_key, pct_label, "Bulk", height=340)
+
+# -- Watchlist renderer -------------------------------------------------------
+def render_watchlist(watch):
+    if not watch:
+        st.info("No watchlist data.")
+        return
+
+    categories = {}
+    for r in watch:
+        cat = r.get("category", "Other")
+        categories.setdefault(cat, []).append(r)
+
+    CAT_ORDER = ["CoX","ToB","ToA","Nex","Nightmare","Raids/DT2","GWD","Specialist","Accessories","Prestige","Other"]
+    ordered_cats = sorted(categories.keys(), key=lambda c: CAT_ORDER.index(c) if c in CAT_ORDER else 99)
+
+    for cat in ordered_cats:
+        items = categories[cat]
+        st.markdown(f"<div class='section-header'>{cat}</div>", unsafe_allow_html=True)
+        col_defs = ["name","chg_1d","chg_7d","chg_14d","chg_30d","trend","flags",
+                    "roi","sell_price","buy_price","ratio"]
+        show_table(items, col_defs, height=min(80 + len(items) * 36, 480))
+
+
+# -- Signals renderer ---------------------------------------------------------
+SIG_TYPE_CSS = {
+    "game update":    "sig-game-update",
+    "meta shift":     "sig-meta-shift",
+    "boss demand":    "sig-boss-demand",
+    "supply shock":   "sig-supply-shock",
+    "community hype": "sig-community",
+    "pvp meta":       "sig-pvp-meta",
+    "new content":    "sig-new-content",
+}
+
+def render_signals(signals):
+    if not signals:
+        st.info("No signals data.")
+        return
+
+    records = []
+    for r in signals:
+        raw = r.get("signal_context", "")
+        parts = [p.strip() for p in raw.split("|")]
+        sig_type   = parts[0] if len(parts) > 0 else ""
+        sig_status = parts[1] if len(parts) > 1 else ""
+        sig_reason = parts[2] if len(parts) > 2 else ""
+        records.append({
+            "_row":      r,
+            "name":      r.get("name",""),
+            "type":      sig_type,
+            "status":    sig_status.strip(),
+            "reason":    sig_reason,
+            "trend":     r.get("trend","Flat"),
+            "chg_1d":    r.get("chg_1d"),
+            "chg_7d":    r.get("chg_7d"),
+            "sell_price": r.get("sell_price"),
+            "ratio":     r.get("ratio"),
+        })
+
+    df = pd.DataFrame([{
+        "Item":       rec["name"],
+        "Type":       rec["type"],
+        "Status":     rec["status"],
+        "Reason":     rec["reason"],
+        "Trend":      rec["trend"],
+        "1D %":       fmt_pct(rec["chg_1d"]),
+        "7D %":       fmt_pct(rec["chg_7d"]),
+        "Price":      fmt_gp(rec["sell_price"]),
+        "B/S":        ratio_fmt(rec["ratio"]),
+    } for rec in records])
+
+    cols = list(df.columns)
+    def style_signals(row):
+        idx = row.name
+        if idx >= len(records): return [""] * len(cols)
+        rec = records[idx]
+        r   = rec["_row"]
+        result = []
+        for col in cols:
+            if col == "Trend":
+                result.append(trend_css(rec["trend"]))
+            elif col == "1D %":
+                result.append(pct_css(rec["chg_1d"]))
+            elif col == "7D %":
+                result.append(pct_css(rec["chg_7d"]))
+            elif col == "B/S":
+                result.append(ratio_css(rec["ratio"]))
+            elif col == "Status":
+                s = rec["status"].upper()
+                if s == "ACTIVE":   result.append("color:#f87171; font-weight:700")
+                elif s == "WATCH":  result.append("color:#facc15; font-weight:700")
+                elif s == "COOLING":result.append("color:#94a3b8; font-weight:700")
+                else:               result.append("")
+            elif col == "Type":
+                css_key = rec["type"].lower().strip()
+                css_cls = SIG_TYPE_CSS.get(css_key, "")
+                result.append(f"color:#38bdf8" if not css_cls else "")
+            else:
+                result.append("")
+        return result
+
+    st.dataframe(df.style.apply(style_signals, axis=1),
+                 use_container_width=True, hide_index=True, height=600)
 
 
 # -- Session / fetch ----------------------------------------------------------
@@ -516,32 +651,30 @@ tab_bulk, tab_sing, tab_roi, tab_shifts, tab_watch, tab_sig = st.tabs([
     "Bulk", "Singular", "High ROI", "Shifts", "Watchlist", "Signals",
 ])
 
-# ---- Bulk -------------------------------------------------------------------
 with tab_bulk:
     st.caption(f"High-volume bulk flips. Updated {fmt_ago(p_ago)}.")
     show_table(bulk_rows,
                ["name","buy_price","sell_price","profit_unit","roi",
                 "ge_limit","fq_label","ratio","realistic_profit"], height=520)
 
-# ---- Singular ---------------------------------------------------------------
 with tab_sing:
     st.caption("Low GE-limit, high-value singular flips.")
     show_table(singular,
                ["name","buy_price","sell_price","profit_unit","roi",
                 "ge_limit","fq_label","ratio","adj_potential"], height=520)
 
-# ---- High ROI ---------------------------------------------------------------
 with tab_roi:
     st.caption("Best ROI % regardless of volume.")
     show_table(high_roi,
                ["name","buy_price","sell_price","profit_unit","roi",
                 "fq_label","ratio","ge_limit"], height=520)
 
-# ---- Shifts -----------------------------------------------------------------
+# -- Shifts tab ---------------------------------------------------------------
 with tab_shifts:
+    render_trend_legend()
     st.caption(
-        "Price shift tracking across multiple time horizons. "
-        "Each section shows Gainers vs Decliners side by side. "
+        "Each section splits into Gainers (left) and Decliners (right). "
+        "% Shift column shows the move and the price it was measured from. "
         "Intraday refreshes every 5 min. Daily refreshes every hour."
     )
 
@@ -554,73 +687,57 @@ with tab_shifts:
     shifts_bulk = st.session_state.get("shifts_bulk", [])
     shifts_ago  = fmt_ago(secs_ago(st.session_state.get("shifts_ts")))
 
-    # Top Movers overview
     if shifts_ht or shifts_bulk:
         render_top_movers(shifts_ht, shifts_bulk)
 
-    st.markdown("<div style='margin-top:.5rem'></div>", unsafe_allow_html=True)
-
-    # Section 1 -- Intraday
+    # Section 1 -- Intraday (use 1h as primary)
     render_shifts_section(
         "Section 1 -- Intraday Price Shifts",
         shifts_ht, shifts_bulk,
-        pct_key="chg_1h", pct_label="1h %",
-        updated_label=f"Gainers sorted high to low. Decliners sorted low to high. "
-                      f"Sorted by 1h % move. Updates every 5 min. Last: {shifts_ago}.",
+        pct_key="chg_1h", prev_key="prev_price_1h", pct_label="1h %",
+        updated_label=f"Sorted by absolute 1h move. Last: {shifts_ago}.",
     )
-
     # Section 2 -- 1D
     render_shifts_section(
         "Section 2 -- 1-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        pct_key="chg_1d", pct_label="1D %",
-        updated_label=f"Sorted by 1D % move. Last: {shifts_ago}.",
+        pct_key="chg_1d", prev_key="prev_price_1d", pct_label="1D %",
+        updated_label=f"Last: {shifts_ago}.",
     )
-
     # Section 3 -- 7D
     render_shifts_section(
         "Section 3 -- 7-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        pct_key="chg_7d", pct_label="7D %",
-        updated_label=f"Sorted by 7D % move (rolling). Last: {shifts_ago}.",
+        pct_key="chg_7d", prev_key="prev_price_7d", pct_label="7D %",
+        updated_label=f"Last: {shifts_ago}.",
     )
-
     # Section 4 -- 14D
     render_shifts_section(
         "Section 4 -- 14-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        pct_key="chg_14d", pct_label="14D %",
-        updated_label=f"Sorted by 14D % move (rolling). Last: {shifts_ago}.",
+        pct_key="chg_14d", prev_key="prev_price_14d", pct_label="14D %",
+        updated_label=f"Last: {shifts_ago}.",
     )
-
     # Section 5 -- 30D
     render_shifts_section(
         "Section 5 -- 30-Day Price Shifts",
         shifts_ht, shifts_bulk,
-        pct_key="chg_30d", pct_label="30D %",
-        updated_label=f"Sorted by 30D % move (rolling). Last: {shifts_ago}.",
+        pct_key="chg_30d", prev_key="prev_price_30d", pct_label="30D %",
+        updated_label=f"Last: {shifts_ago}.",
     )
 
-# ---- Watchlist --------------------------------------------------------------
+# -- Watchlist tab ------------------------------------------------------------
 with tab_watch:
     st.caption(
-        "Curated investment-grade items. Sorted by trend activity -- most active first."
+        "Investment-grade items: 5M+ bossing and raids drops, endgame gear and weapons. "
+        "Grouped by content source. Sorted by trend activity -- most active first."
     )
-    show_table(watch,
-               ["name","chg_1d","chg_7d","chg_30d","trend","flags",
-                "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio"],
-               height=600)
-    with st.expander("Catalyst notes"):
-        for row in watch:
-            cat = WATCHLIST_CATALYSTS.get(row["name"], "")
-            st.markdown(f"**{row['name']}** -- {cat}")
+    render_watchlist(watch)
 
-# ---- Signals ----------------------------------------------------------------
+# -- Signals tab --------------------------------------------------------------
 with tab_sig:
     st.caption(
-        "Meta-sensitive items. Update SIGNALS_UNIVERSE in ge_api.py as events change."
+        "Meta-sensitive items flagged by update type and status. "
+        "Run an OSRS Signals Sweep to refresh context strings in ge_api.py."
     )
-    show_table(signals,
-               ["name","chg_1d","chg_7d","chg_30d","trend","flags",
-                "roi","buy_price","sell_price","sell_qty_hr","buy_qty_hr","ratio","signal_context"],
-               height=600)
+    render_signals(signals)
