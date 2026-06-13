@@ -956,8 +956,9 @@ st.markdown(
 st.markdown("""
 <style>
 div[data-testid="stButton"] > button {
-    float: right;
-    margin-top: -52px;
+    display: block;
+    margin-left: auto;
+    margin-top: -46px;
     position: relative;
     z-index: 10;
     min-width: 90px;
