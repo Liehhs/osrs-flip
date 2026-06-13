@@ -6,25 +6,25 @@ TAX_RATE = 0.02
 TAX_CAP = 5_000_000
 
 WATCHLIST = [
-    ("Twisted bow", "CoX BIS — permanently scarce; ranged PvM always relevant"),
-    ("Scythe of vitur", "ToB BIS — BiS melee for slayer/raids; supply drains via charges"),
-    ("Tumeken's shadow", "ToA BIS mage — meta-defining; no confirmed replacement"),
+    ("Twisted bow", "CoX BIS â€” permanently scarce; ranged PvM always relevant"),
+    ("Scythe of vitur", "ToB BIS â€” BiS melee for slayer/raids; supply drains via charges"),
+    ("Tumeken's shadow", "ToA BIS mage â€” meta-defining; no confirmed replacement"),
     ("Soulreaper axe", "Blood Moon drop; Raids 4 hype driving melee interest"),
-    ("Osmumten's fang", "ToA — stab BIS; supply pressure from active ToA meta"),
-    ("Harmonised orb", "CoX — mage BIS for NM/PvM; CoX changes can shift supply/demand"),
-    ("Volatile orb", "CoX — high-value unique; affected by CoX prayer scroll reweight"),
-    ("Eldritch orb", "CoX — affected by CoX prayer scroll reweight; supply dynamics shifting"),
-    ("Dexterous prayer scroll", "CoX — prayer scroll reweight could shift value"),
-    ("Arcane prayer scroll", "CoX — prayer scroll rate controversy; watch for rebalance"),
-    ("Enhanced crystal weapon seed", "Corrupted Gauntlet — supply changes affect Bowfa ecosystem"),
-    ("Ghrazi rapier", "ToB — buff/update-sensitive melee unique"),
-    ("Sanguinesti staff (uncharged)", "ToB — buff/update-sensitive mage unique"),
-    ("Avernic defender hilt", "ToB — tied to ToB/raids participation"),
+    ("Osmumten's fang", "ToA â€” stab BIS; supply pressure from active ToA meta"),
+    ("Harmonised orb", "CoX â€” mage BIS for NM/PvM; CoX changes can shift supply/demand"),
+    ("Volatile orb", "CoX â€” high-value unique; affected by CoX prayer scroll reweight"),
+    ("Eldritch orb", "CoX â€” affected by CoX prayer scroll reweight; supply dynamics shifting"),
+    ("Dexterous prayer scroll", "CoX â€” prayer scroll reweight could shift value"),
+    ("Arcane prayer scroll", "CoX â€” prayer scroll rate controversy; watch for rebalance"),
+    ("Enhanced crystal weapon seed", "Corrupted Gauntlet â€” supply changes affect Bowfa ecosystem"),
+    ("Ghrazi rapier", "ToB â€” buff/update-sensitive melee unique"),
+    ("Sanguinesti staff (uncharged)", "ToB â€” buff/update-sensitive mage unique"),
+    ("Avernic defender hilt", "ToB â€” tied to ToB/raids participation"),
     ("Necklace of anguish", "Ranged neck slot pressure from new gear / replacement risk"),
-    ("Masori body (f)", "ToA range BIS — future range gear may displace it"),
-    ("Masori chaps (f)", "ToA range BIS — same displacement risk as body"),
-    ("Torva platebody", "Nex melee BIS — raid melee hype proxy"),
-    ("Torva platelegs", "Nex melee BIS — raid melee hype proxy"),
+    ("Masori body (f)", "ToA range BIS â€” future range gear may displace it"),
+    ("Masori chaps (f)", "ToA range BIS â€” same displacement risk as body"),
+    ("Torva platebody", "Nex melee BIS â€” raid melee hype proxy"),
+    ("Torva platelegs", "Nex melee BIS â€” raid melee hype proxy"),
     ("Bandos chestplate", "Mid-tier melee returning-player demand proxy"),
     ("Bandos tassets", "Mid-tier melee returning-player demand proxy"),
     ("Armadyl chestplate", "Mid-tier range baseline demand proxy"),
@@ -320,3 +320,4 @@ def compute_flips(latest, mapping, hour_vols, fmin_vols):
     )[:12]
 
     return bulk, singular, high_roi, watch, candidates, rows
+SimplyCodes
