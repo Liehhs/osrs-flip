@@ -774,18 +774,26 @@ def _render_signal_table(records):
     st.dataframe(df.style.apply(style_fn, axis=1),
                  use_container_width=True, hide_index=True, height=height)
 
-# Classify item direction from chg_7d
+# Classify item direction from STATIC signal type/status only -- never from live price data.
+# This ensures items stay in their assigned table across all refreshes.
+# To move an item between tables, update SIGNALS_UNIVERSE in ge_api.py.
+_NEGATIVE_TYPES = {"supply shock", "price risk"}
+_NEGATIVE_NAMES = {
+    # Explicitly negative items regardless of type label
+    "necklace of anguish",
+    "inquisitor's hauberk",
+    "inquisitor's plateskirt",
+    "justiciar faceguard",
+    "justiciar chestguard",
+    "justiciar legguards",
+}
+
 def _is_positive(rec):
-    # ACTIVE items with price risk / supply shock / price risk types are negative
-    neg_types = {"supply shock", "price risk"}
-    if rec["raw_type"] in neg_types and rec["status"].upper() == "ACTIVE":
+    if rec["name"].lower() in _NEGATIVE_NAMES:
         return False
-    # Otherwise use 7D price direction if available
-    chg = rec.get("chg_7d")
-    if chg is not None:
-        return chg >= 0
-    # Fall back to status: ACTIVE game updates / meta shifts assumed positive
-    return rec["status"].upper() == "ACTIVE"
+    if rec["raw_type"] in _NEGATIVE_TYPES:
+        return False
+    return True
 
 def render_signals(signals):
     if not signals:
@@ -795,7 +803,7 @@ def render_signals(signals):
     # Market overview
     st.markdown("<div class='section-header'>Market Overview & Predictions</div>",
                 unsafe_allow_html=True)
-    st.markdown(MARKET_OVERVIEW)
+    st.markdown(MARKET_OVERVIEW_HTML, unsafe_allow_html=True)
     st.divider()
 
     render_signals_legend()

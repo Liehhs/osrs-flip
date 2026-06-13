@@ -655,17 +655,17 @@ def compute_flips(latest, mapping, hour_vols, fmin_vols):
 
     all_by_name = {r["name"].lower(): r for r in rows}
 
+    # Watchlist: item list and order are STATIC -- defined solely by WATCHLIST_NAMES.
+    # Live price/trend data refreshes each cycle, but items never added/removed/reordered automatically.
+    _wl_order = {name.lower(): i for i, name in enumerate(WATCHLIST_NAMES)}
     watch_raw = [all_by_name[n.lower()] for n in WATCHLIST_NAMES if n.lower() in all_by_name]
     watch     = enrich_with_trends(watch_raw)
     for w in watch:
         w["category"]       = WATCHLIST_CATEGORY.get(w["name"], "")
         w["signal_context"] = WATCHLIST_CATALYSTS.get(w["name"], "")
         w["catalyst"]       = WATCHLIST_CATALYSTS.get(w["name"], "")
-    watch = sorted(watch, key=lambda r: (
-        _TREND_ORDER.get(r.get("trend", "Flat"), 5),
-        -abs(r.get("chg_7d") or 0),
-        -r.get("profit_unit", 0),
-    ))
+    # Preserve manual order -- NO dynamic sort
+    watch = sorted(watch, key=lambda r: _wl_order.get(r.get("name", "").lower(), 999))
 
     # Signals: preserve the order defined in SIGNALS_UNIVERSE (manually curated).
     # Live price/trend data refreshes but the item list and order never change dynamically.
