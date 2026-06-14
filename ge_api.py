@@ -669,7 +669,7 @@ def build_rows(latest, mapping, hour_vols, fmin_vols):
 
 # -- Trend enrichment ----------------------------------------------------------
 def enrich_with_trends(rows):
-        enriched = []
+    enriched = []
     for r in rows:
         item_id = r.get("id")
         cur = r.get("sell_price") or 0
