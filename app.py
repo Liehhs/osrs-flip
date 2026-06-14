@@ -17,9 +17,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-PRICE_INTERVAL  = 60
-VOLUME_INTERVAL = 300
-SHIFTS_INTERVAL = 300
+PRICE_INTERVAL  = 420
+VOLUME_INTERVAL = 420
+SHIFTS_INTERVAL = 420
 MAPPING_KEY     = "mapping_loaded"
 
 st.markdown("""
