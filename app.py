@@ -473,6 +473,9 @@ BOSS_CATS  = {
     "Thermonuclear Smoke Devil", "Grotesque Guardians", "Alchemical Hydra",
     "Phantom Muspah", "Doom of Mokhaiotl", "Blood Moon", "Blue Moon",
     "Eclipse Moon", "Sarachnis", "Skotizo", "Corporeal Beast",
+    "Araxxor", "Hueycoatl", "Amoxliatl", "Royal Titans", "Fortis Colosseum",
+    "Basilisk Knight", "Abyssal Demon", "Calvar'ion", "Scorpia",
+    "Chaos Elemental", "Abyssal Sire", "Giant Mole",
 }
 CLUE_CATS  = {"Treasure Trails"}
 MIN_PRICE      = 1_000_000  # 1M floor for boss/raid
@@ -522,11 +525,10 @@ def _tracker_card(label, rows, floor=None):
     )
 
 def _show_watchlist_table(rows, floor=None):
-    if floor is None:
-        floor = MIN_PRICE
-    filtered = [r for r in rows if (r.get("sell_price") or 0) >= floor]
+    # Static: always show all watchlist rows regardless of current price
+    filtered = rows if rows else []
     if not filtered:
-        st.caption("No items at or above 1M currently.")
+        st.caption("No items tracked yet.")
         return
     df = pd.DataFrame([{
         "Item":   r.get("name", "--"),
@@ -624,20 +626,16 @@ SIG_TYPE_DISPLAY = {
     "price risk":     "Price Risk",
 }
 
-MARKET_OVERVIEW = """
-**Current Signals (June 2026)**
-
-The OSRS economy is experiencing a rare convergence of three simultaneous live catalysts pulling the market in distinct directions.
-
-**Summer Sweep-Up (LIVE):** The biggest combat rebalance in years. Soulreaper axe now stacks to 5, +50% accuracy, 12.5% def drain per hit -- genuine BiS melee. This lifts Torva, Ultor ring, and the melee ecosystem. Ghrazi rapier gained +4 strength (guaranteed extra max hit). Sanguinesti staff got a 6% DPS buff with halved charge cost, making ToB more attractive to complete. Inquisitor set bonus was *removed* -- mace is stronger standalone but full set is weaker, creating sell pressure on hauberk/plateskirt.
-
-**Blood Moon Rises (June 30):** Necklace of Rupture (new BIS range neck) directly displaces Necklace of Anguish. Expect Anguish to decline 20-35% post-launch. Broader range meta (Masori, Zaryte crossbow) may benefit as range DPS becomes more accessible.
-
-**Raids 4 / Fractured Archive (Autumn 2026):** Community accumulation is quietly tightening the top-tier market. Twisted bow, Tumeken's shadow, and Scythe of vitur show unusually low sell volume -- consistent with long-term holders not selling. This supply squeeze typically precedes a sharp price move as raid release hype peaks.
-
-**3-Month Outlook (Sep 2026):** Soulreaper axe likely settles 15-25% above current. Necklace of Anguish drops 20-30%. Inquisitor body/legs continue softening. Ghrazi rapier and Sang staff see modest sustained gains from ToB activity lift. Twisted bow and Shadow grind upward on Raids 4 accumulation.
-
-**6-Month Outlook (Dec 2026):** If Raids 4 launches on schedule, expect a sharp spike 4-6 weeks pre-launch across Tbow, Shadow, Scythe. Post-launch supply shock follows 4-8 weeks later. Prestige fixed-supply items (Elysian, 3rd age) may rally in the high-ticket enthusiasm surrounding a major raid launch. Inquisitor set finds a floor once the mace-only meta stabilises.
+MARKET_OVERVIEW_HTML = """
+<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px 20px;margin-bottom:1rem">
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Current Signals (June 2026)</strong></p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px">The OSRS economy is experiencing a rare convergence of three simultaneous live catalysts pulling the market in distinct directions.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Summer Sweep-Up (LIVE):</strong> The biggest combat rebalance in years. Soulreaper axe now stacks to 5, +50% accuracy, 12.5% def drain per hit -- genuine BiS melee. This lifts Torva, Ultor ring, and the melee ecosystem. Ghrazi rapier gained +4 strength (guaranteed extra max hit). Sanguinesti staff got a 6% DPS buff with halved charge cost, making ToB more attractive to complete. Inquisitor set bonus was <em>removed</em> -- mace is stronger standalone but full set is weaker, creating sell pressure on hauberk/plateskirt.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Blood Moon Rises (June 30):</strong> Necklace of Rupture (new BIS range neck) directly displaces Necklace of Anguish. Expect Anguish to decline 20-35% post-launch. Broader range meta (Masori, Zaryte crossbow) may benefit as range DPS becomes more accessible.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Raids 4 / Fractured Archive (Autumn 2026):</strong> Community accumulation is quietly tightening the top-tier market. Twisted bow, Tumeken's shadow, and Scythe of vitur show unusually low sell volume -- consistent with long-term holders not selling. This supply squeeze typically precedes a sharp price move as raid release hype peaks.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>3-Month Outlook (Sep 2026):</strong> Soulreaper axe likely settles 15-25% above current. Necklace of Anguish drops 20-30%. Inquisitor body/legs continue softening. Ghrazi rapier and Sang staff see modest sustained gains from ToB activity lift. Twisted bow and Shadow grind upward on Raids 4 accumulation.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>6-Month Outlook (Dec 2026):</strong> If Raids 4 launches on schedule, expect a sharp spike 4-6 weeks pre-launch across Tbow, Shadow, Scythe. Post-launch supply shock follows 4-8 weeks later. Prestige fixed-supply items (Elysian, 3rd age) may rally in the high-ticket enthusiasm surrounding a major raid launch. Inquisitor set finds a floor once the mace-only meta stabilises.</p>
+</div>
 """
 
 TYPE_BG = {
@@ -860,33 +858,40 @@ def do_shifts(all_rows, mapping):
 # -- Header -------------------------------------------------------------------
 _tw_color, _tw_msg = get_timing()
 _cmap = {"green": "#22c55e", "yellow": "#facc15", "red": "#ef4444"}
+_p_ago_hdr = fmt_ago(secs_ago(st.session_state.get("price_ts")))
+_v_ago_hdr = fmt_ago(secs_ago(st.session_state.get("volume_ts")))
 
-col_title, col_banner, col_meta, col_btn = st.columns([3, 5, 2, 1])
-with col_title:
+# Force the button column to a fixed pixel width so it never clips
+st.markdown("""
+<style>
+[data-testid="column"]:last-of-type {
+    min-width: 110px !important;
+    max-width: 110px !important;
+    width: 110px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+col_main, col_btn = st.columns([1, 0.001])
+with col_main:
     st.markdown(
-        "<h2 style='margin:0; padding:0; line-height:1.2; "
-        "font-size:1.5rem; color:#f1f5f9;'>Owen's GE Tracker</h2>",
-        unsafe_allow_html=True,
-    )
-with col_banner:
-    st.markdown(
-        f"<div style='background:#1e293b; border-left:4px solid {_cmap[_tw_color]}; "
-        f"padding:9px 14px; border-radius:6px; font-size:.84rem; "
-        f"color:#e5e7eb; margin-top:2px; line-height:1.4;'>{_tw_msg}</div>",
-        unsafe_allow_html=True,
-    )
-with col_meta:
-    # Timestamps shown before data loads -- will be "never" initially
-    _p_ago_hdr = fmt_ago(secs_ago(st.session_state.get("price_ts")))
-    _v_ago_hdr = fmt_ago(secs_ago(st.session_state.get("volume_ts")))
-    st.markdown(
-        f"<div style='text-align:right; line-height:1.6; margin-top:4px;'>"
-        f"<span style='font-size:.72rem; color:#64748b;'>Prices: </span>"
-        f"<span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_p_ago_hdr}</span>"
-        f"<br>"
-        f"<span style='font-size:.72rem; color:#64748b;'>Volumes: </span>"
-        f"<span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_v_ago_hdr}</span>"
-        f"</div>",
+        f"""<div style='display:flex; align-items:center; gap:12px; flex-wrap:nowrap; padding:4px 0;'>
+          <div style='flex:0 0 auto;'>
+            <h2 style='margin:0; padding:0; line-height:1.2; font-size:1.5rem; color:#f1f5f9; white-space:nowrap;'>Owen's GE Tracker</h2>
+          </div>
+          <div style='flex:1 1 auto; min-width:0;'>
+            <div style='background:#1e293b; border-left:4px solid {_cmap[_tw_color]};
+                        padding:8px 14px; border-radius:6px; font-size:.84rem;
+                        color:#e5e7eb; line-height:1.4; white-space:nowrap;
+                        overflow:hidden; text-overflow:ellipsis;'>{_tw_msg}</div>
+          </div>
+          <div style='flex:0 0 auto; text-align:right; line-height:1.7; white-space:nowrap;'>
+            <span style='font-size:.72rem; color:#64748b;'>Prices: </span>
+            <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_p_ago_hdr}</span><br>
+            <span style='font-size:.72rem; color:#64748b;'>Volumes: </span>
+            <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_v_ago_hdr}</span>
+          </div>
+        </div>""",
         unsafe_allow_html=True,
     )
 with col_btn:
@@ -925,6 +930,7 @@ with tab_bulk:
     st.caption(f"High-volume bulk flips. Updated {fmt_ago(p_ago)}.")
     show_table(bulk_rows,
                ["name","buy_price","sell_price","profit_unit","roi",
+                "buy_qty_hr","sell_qty_hr",
                 "ge_limit","fq_label","ratio","realistic_profit"], height=520)
 
 with tab_sing:
