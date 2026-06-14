@@ -623,20 +623,16 @@ SIG_TYPE_DISPLAY = {
     "price risk":     "Price Risk",
 }
 
-MARKET_OVERVIEW = """
-**Current Signals (June 2026)**
-
-The OSRS economy is experiencing a rare convergence of three simultaneous live catalysts pulling the market in distinct directions.
-
-**Summer Sweep-Up (LIVE):** The biggest combat rebalance in years. Soulreaper axe now stacks to 5, +50% accuracy, 12.5% def drain per hit -- genuine BiS melee. This lifts Torva, Ultor ring, and the melee ecosystem. Ghrazi rapier gained +4 strength (guaranteed extra max hit). Sanguinesti staff got a 6% DPS buff with halved charge cost, making ToB more attractive to complete. Inquisitor set bonus was *removed* -- mace is stronger standalone but full set is weaker, creating sell pressure on hauberk/plateskirt.
-
-**Blood Moon Rises (June 30):** Necklace of Rupture (new BIS range neck) directly displaces Necklace of Anguish. Expect Anguish to decline 20-35% post-launch. Broader range meta (Masori, Zaryte crossbow) may benefit as range DPS becomes more accessible.
-
-**Raids 4 / Fractured Archive (Autumn 2026):** Community accumulation is quietly tightening the top-tier market. Twisted bow, Tumeken's shadow, and Scythe of vitur show unusually low sell volume -- consistent with long-term holders not selling. This supply squeeze typically precedes a sharp price move as raid release hype peaks.
-
-**3-Month Outlook (Sep 2026):** Soulreaper axe likely settles 15-25% above current. Necklace of Anguish drops 20-30%. Inquisitor body/legs continue softening. Ghrazi rapier and Sang staff see modest sustained gains from ToB activity lift. Twisted bow and Shadow grind upward on Raids 4 accumulation.
-
-**6-Month Outlook (Dec 2026):** If Raids 4 launches on schedule, expect a sharp spike 4-6 weeks pre-launch across Tbow, Shadow, Scythe. Post-launch supply shock follows 4-8 weeks later. Prestige fixed-supply items (Elysian, 3rd age) may rally in the high-ticket enthusiasm surrounding a major raid launch. Inquisitor set finds a floor once the mace-only meta stabilises.
+MARKET_OVERVIEW_HTML = """
+<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px 20px;margin-bottom:1rem">
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Current Signals (June 2026)</strong></p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px">The OSRS economy is experiencing a rare convergence of three simultaneous live catalysts pulling the market in distinct directions.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Summer Sweep-Up (LIVE):</strong> The biggest combat rebalance in years. Soulreaper axe now stacks to 5, +50% accuracy, 12.5% def drain per hit -- genuine BiS melee. This lifts Torva, Ultor ring, and the melee ecosystem. Ghrazi rapier gained +4 strength (guaranteed extra max hit). Sanguinesti staff got a 6% DPS buff with halved charge cost, making ToB more attractive to complete. Inquisitor set bonus was <em>removed</em> -- mace is stronger standalone but full set is weaker, creating sell pressure on hauberk/plateskirt.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Blood Moon Rises (June 30):</strong> Necklace of Rupture (new BIS range neck) directly displaces Necklace of Anguish. Expect Anguish to decline 20-35% post-launch. Broader range meta (Masori, Zaryte crossbow) may benefit as range DPS becomes more accessible.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>Raids 4 / Fractured Archive (Autumn 2026):</strong> Community accumulation is quietly tightening the top-tier market. Twisted bow, Tumeken's shadow, and Scythe of vitur show unusually low sell volume -- consistent with long-term holders not selling. This supply squeeze typically precedes a sharp price move as raid release hype peaks.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>3-Month Outlook (Sep 2026):</strong> Soulreaper axe likely settles 15-25% above current. Necklace of Anguish drops 20-30%. Inquisitor body/legs continue softening. Ghrazi rapier and Sang staff see modest sustained gains from ToB activity lift. Twisted bow and Shadow grind upward on Raids 4 accumulation.</p>
+<p style="color:#cbd5e1;font-size:.87rem;line-height:1.65;margin-bottom:10px"><strong>6-Month Outlook (Dec 2026):</strong> If Raids 4 launches on schedule, expect a sharp spike 4-6 weeks pre-launch across Tbow, Shadow, Scythe. Post-launch supply shock follows 4-8 weeks later. Prestige fixed-supply items (Elysian, 3rd age) may rally in the high-ticket enthusiasm surrounding a major raid launch. Inquisitor set finds a floor once the mace-only meta stabilises.</p>
+</div>
 """
 
 TYPE_BG = {
