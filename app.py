@@ -522,11 +522,10 @@ def _tracker_card(label, rows, floor=None):
     )
 
 def _show_watchlist_table(rows, floor=None):
-    if floor is None:
-        floor = MIN_PRICE
-    filtered = [r for r in rows if (r.get("sell_price") or 0) >= floor]
+    # Static: always show all watchlist rows regardless of current price
+    filtered = rows if rows else []
     if not filtered:
-        st.caption("No items at or above 1M currently.")
+        st.caption("No items tracked yet.")
         return
     df = pd.DataFrame([{
         "Item":   r.get("name", "--"),
@@ -651,72 +650,6 @@ TYPE_BG = {
     "new content":    ("background:#052e16", "color:#4ade80"),
     "raids prep":     ("background:#052e16", "color:#4ade80"),
 }
-
-MARKET_OVERVIEW_HTML = """
-<div style='display:flex; flex-direction:column; gap:12px; margin-bottom:8px;'>
-  <div style='font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-              color:#64748b; padding-bottom:4px; border-bottom:1px solid #334155;'>
-    Current Signals -- June 2026
-  </div>
-  <div style='display:flex; gap:10px; flex-wrap:wrap;'>
-    <div style='flex:1; min-width:260px; background:#071a12; border:1px solid #14532d;
-                border-left:3px solid #4ade80; border-radius:8px; padding:12px 14px;'>
-      <div style='font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-                  color:#4ade80; margin-bottom:6px;'>&#9679; LIVE &nbsp;Summer Sweep-Up</div>
-      <ul style='margin:0; padding-left:16px; font-size:.82rem; color:#cbd5e1; line-height:1.7;'>
-        <li><b>Soulreaper axe</b> reworked -- stacks to 5, +50% acc, 12.5% def drain. Genuine melee BiS.</li>
-        <li><b>Ghrazi rapier</b> +4 str (extra max hit). <b>Sang staff</b> +6% DPS, halved charge cost.</li>
-        <li><b>Inquisitor set bonus removed</b> -- mace stronger standalone, full set weaker. Sell pressure on body/legs.</li>
-      </ul>
-    </div>
-    <div style='flex:1; min-width:260px; background:#0c1a2e; border:1px solid #1e3a5f;
-                border-left:3px solid #38bdf8; border-radius:8px; padding:12px 14px;'>
-      <div style='font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-                  color:#38bdf8; margin-bottom:6px;'>&#9650; JUNE 30 &nbsp;Blood Moon Rises</div>
-      <ul style='margin:0; padding-left:16px; font-size:.82rem; color:#cbd5e1; line-height:1.7;'>
-        <li><b>Necklace of Rupture</b> (new BIS range neck) directly replaces Necklace of Anguish.</li>
-        <li>Expect Anguish to decline <b>20-35%</b> post-launch as demand shifts to new item.</li>
-        <li>Broader range meta (Masori, Zaryte crossbow) benefits as range DPS gets more accessible.</li>
-      </ul>
-    </div>
-    <div style='flex:1; min-width:260px; background:#1a0c2e; border:1px solid #4c1d95;
-                border-left:3px solid #c084fc; border-radius:8px; padding:12px 14px;'>
-      <div style='font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-                  color:#c084fc; margin-bottom:6px;'>&#9670; AUTUMN 2026 &nbsp;Raids 4 Prep</div>
-      <ul style='margin:0; padding-left:16px; font-size:.82rem; color:#cbd5e1; line-height:1.7;'>
-        <li><b>Tbow, Shadow, Scythe</b> showing unusually low sell volume -- holders not selling.</li>
-        <li>Supply squeeze active. Sharp price move expected as release hype peaks.</li>
-        <li>CoX and ToA participation rising -- proxy items lifted.</li>
-      </ul>
-    </div>
-  </div>
-  <div style='display:flex; gap:10px; flex-wrap:wrap;'>
-    <div style='flex:1; min-width:200px; background:#1e293b; border:1px solid #334155;
-                border-radius:8px; padding:12px 14px;'>
-      <div style='font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-                  color:#94a3b8; margin-bottom:6px;'>3-Month Outlook -- Sep 2026</div>
-      <ul style='margin:0; padding-left:16px; font-size:.8rem; color:#94a3b8; line-height:1.7;'>
-        <li>Soulreaper axe settles <b style='color:#4ade80;'>+15-25%</b> as melee meta firms up</li>
-        <li>Necklace of Anguish drops <b style='color:#f87171;'>-20-30%</b> post-Rupture</li>
-        <li>Ghrazi rapier + Sang staff modest sustained gains from ToB lift</li>
-        <li>Inquisitor body/legs continue softening -- floor TBD</li>
-        <li>Twisted bow and Shadow grind upward on Raids 4 accumulation</li>
-      </ul>
-    </div>
-    <div style='flex:1; min-width:200px; background:#1e293b; border:1px solid #334155;
-                border-radius:8px; padding:12px 14px;'>
-      <div style='font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-                  color:#94a3b8; margin-bottom:6px;'>6-Month Outlook -- Dec 2026</div>
-      <ul style='margin:0; padding-left:16px; font-size:.8rem; color:#94a3b8; line-height:1.7;'>
-        <li>Raids 4 pre-launch: sharp spike across <b style='color:#4ade80;'>Tbow, Shadow, Scythe</b></li>
-        <li>Post-launch supply shock 4-8 weeks after</li>
-        <li>Prestige items (Elysian, 3rd age) may rally on high-ticket enthusiasm</li>
-        <li>Inquisitor set finds a floor once mace-only meta stabilises</li>
-      </ul>
-    </div>
-  </div>
-</div>
-"""
 
 def render_signals_legend():
     st.markdown("""
@@ -929,43 +862,41 @@ _cmap = {"green": "#22c55e", "yellow": "#facc15", "red": "#ef4444"}
 _p_ago_hdr = fmt_ago(secs_ago(st.session_state.get("price_ts")))
 _v_ago_hdr = fmt_ago(secs_ago(st.session_state.get("volume_ts")))
 
-st.markdown(
-    f"""<div style='display:flex; align-items:center; gap:14px; flex-wrap:nowrap;
-                    min-height:48px; padding:4px 0;'>
-      <div style='flex:0 0 auto; white-space:nowrap;'>
-        <h2 style='margin:0; padding:0; line-height:1.2;
-                   font-size:1.5rem; color:#f1f5f9;'>Owen's GE Tracker</h2>
-      </div>
-      <div style='flex:1 1 auto; min-width:0;'>
-        <div style='background:#1e293b; border-left:4px solid {_cmap[_tw_color]};
-                    padding:9px 14px; border-radius:6px; font-size:.84rem;
-                    color:#e5e7eb; line-height:1.4;'>{_tw_msg}</div>
-      </div>
-      <div style='flex:0 0 auto; white-space:nowrap; text-align:right; line-height:1.7;'>
-        <span style='font-size:.72rem; color:#64748b;'>Prices: </span>
-        <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_p_ago_hdr}</span>
-        <br>
-        <span style='font-size:.72rem; color:#64748b;'>Volumes: </span>
-        <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_v_ago_hdr}</span>
-      </div>
-    </div>""",
-    unsafe_allow_html=True,
-)
-
-# Button on its own full-width row, pinned right with CSS
+# Force the button column to a fixed pixel width so it never clips
 st.markdown("""
 <style>
-div[data-testid="stButton"] > button {
-    display: block;
-    margin-left: auto;
-    margin-top: -46px;
-    position: relative;
-    z-index: 10;
-    min-width: 90px;
+[data-testid="column"]:last-of-type {
+    min-width: 110px !important;
+    max-width: 110px !important;
+    width: 110px !important;
 }
 </style>
 """, unsafe_allow_html=True)
-manual = st.button("Refresh", type="primary")
+
+col_main, col_btn = st.columns([1, 0.001])
+with col_main:
+    st.markdown(
+        f"""<div style='display:flex; align-items:center; gap:12px; flex-wrap:nowrap; padding:4px 0;'>
+          <div style='flex:0 0 auto;'>
+            <h2 style='margin:0; padding:0; line-height:1.2; font-size:1.5rem; color:#f1f5f9; white-space:nowrap;'>Owen's GE Tracker</h2>
+          </div>
+          <div style='flex:1 1 auto; min-width:0;'>
+            <div style='background:#1e293b; border-left:4px solid {_cmap[_tw_color]};
+                        padding:8px 14px; border-radius:6px; font-size:.84rem;
+                        color:#e5e7eb; line-height:1.4; white-space:nowrap;
+                        overflow:hidden; text-overflow:ellipsis;'>{_tw_msg}</div>
+          </div>
+          <div style='flex:0 0 auto; text-align:right; line-height:1.7; white-space:nowrap;'>
+            <span style='font-size:.72rem; color:#64748b;'>Prices: </span>
+            <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_p_ago_hdr}</span><br>
+            <span style='font-size:.72rem; color:#64748b;'>Volumes: </span>
+            <span style='font-size:.72rem; color:#94a3b8; font-weight:600;'>{_v_ago_hdr}</span>
+          </div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+with col_btn:
+    manual = st.button("Refresh", type="primary", use_container_width=True)
 
 # -- Data loading -------------------------------------------------------------
 with st.spinner("Loading..."):
@@ -1000,13 +931,13 @@ with tab_bulk:
     st.caption(f"High-volume bulk flips. Updated {fmt_ago(p_ago)}.")
     show_table(bulk_rows,
                ["name","buy_price","sell_price","profit_unit","roi",
+                "buy_qty_hr","sell_qty_hr",
                 "ge_limit","fq_label","ratio","realistic_profit"], height=520)
 
 with tab_sing:
     st.caption("Low GE-limit, high-value singular flips.")
     show_table(singular,
-                ["name","buy_price","sell_price","profit_unit","roi",
-                "buy_qty_hr","sell_qty_hr",
+               ["name","buy_price","sell_price","profit_unit","roi",
                 "ge_limit","fq_label","ratio","adj_potential"], height=520)
 
 with tab_roi:
